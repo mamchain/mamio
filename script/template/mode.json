@@ -1,0 +1,14 @@
+{
+    "EModeType::SERVER": {
+        "usage": "minemon-server (OPTIONS)",
+        "desc": "Run minemon server"
+    },
+    "EModeType::CONSOLE": {
+        "usage": "minemon-cli (OPTIONS) COMMAND",
+        "desc": "Run minemon RPC client"
+    },
+    "EModeType::MINER": {
+        "usage": "minemon-miner (OPTIONS)",
+        "desc": "Run minemon miner"
+    }
+}
