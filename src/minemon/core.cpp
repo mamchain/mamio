@@ -27,9 +27,9 @@ static const int PROOF_OF_WORK_BITS_UPPER_LIMIT = 200;
 #ifdef MINEMON_TESTNET
 static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 24;
 #else
-static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 32;//40;
+static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 45;
 #endif
-static const int PROOF_OF_WORK_BITS_INIT_TESTNET = 10;
+static const int PROOF_OF_WORK_BITS_INIT_TESTNET = 24;
 static const uint32 PROOF_OF_WORK_DIFFICULTY_INTERVAL_MAINNET = 10000;
 static const uint32 PROOF_OF_WORK_DIFFICULTY_INTERVAL_TESTNET = 30;
 
@@ -40,10 +40,10 @@ static const int64 BBCP_POW_REWARD_RATE = 382;
 static const int64 BBCP_TOTAL_REWARD_RATE = 1000;
 static const int64 BBCP_MIN_PLEDGE_COIN = 100 * COIN;
 
-static const int BBCP_REPEAT_MINT_HEIGHT = 100;              //100;
-static const int BBCP_PLEDGE_REWARD_DISTRIBUTE_HEIGHT = 60; //1440;
-static const int BBCP_REDEEM_DAY_COUNT = 10;               //100;
-static const int BBCP_REDEEM_DAY_HEIGHT = 5;               //1440;
+static const int BBCP_REPEAT_MINT_HEIGHT = 100;            
+static const int BBCP_PLEDGE_REWARD_DISTRIBUTE_HEIGHT = 1440;
+static const int BBCP_REDEEM_DAY_COUNT = 100;
+static const int BBCP_REDEEM_DAY_HEIGHT = 1440;
 
 namespace minemon
 {
