@@ -19,6 +19,7 @@
 #include "forkmanager.h"
 #include "netchn.h"
 #include "network.h"
+#include "param.h"
 #include "purger.h"
 #include "recovery.h"
 #include "rpcclient.h"
@@ -139,6 +140,8 @@ bool CBbEntry::Initialize(int argc, char* argv[])
         cerr << "Warning: hard disk available < 100M\n";
         return false;
     }
+
+    TESTNET_FLAG = config.GetConfig()->fTestNet;
 
     // daemon
     if (config.GetConfig()->fDaemon && (config.GetModeType() == EModeType::SERVER || config.GetModeType() == EModeType::MINER))

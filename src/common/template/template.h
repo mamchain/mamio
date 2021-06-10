@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "destination.h"
+#include "param.h"
 #include "stream/datastream.h"
 #include "templateid.h"
 #include "util.h"

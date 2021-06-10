@@ -13,8 +13,6 @@
 using namespace std;
 using namespace xengine;
 
-static const int64 COIN = 1000000;
-
 //////////////////////////////
 // CTemplateDexMatch
 
@@ -76,7 +74,7 @@ void CTemplateDexMatch::GetTemplateData(minemon::rpc::CTemplateResponse& obj, CD
         obj.dexmatch.strCoinpair = strCoinPairTemp;
     }
     obj.dexmatch.dFinal_Price = ((double)nFinalPrice / (double)PRICE_PRECISION);
-    obj.dexmatch.dMatch_Amount = (double)nMatchAmount / COIN;
+    obj.dexmatch.dMatch_Amount = ValueFromCoin(nMatchAmount);
     obj.dexmatch.dFee = FeeDoubleFromInt64(nFee);
 
     obj.dexmatch.strSecret_Hash = hashSecret.GetHex();

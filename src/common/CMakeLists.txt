@@ -26,6 +26,7 @@ set(sources
     wallettx.h 
     proof.h
     profile.h       profile.cpp
+    param.h         param.cpp
     block.h
     forkcontext.h
     ${template}

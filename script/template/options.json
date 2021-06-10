@@ -52,9 +52,9 @@
             "name": "nLogFileSize",
             "type": "int",
             "opt": "logfilesize",
-            "default": 10,
+            "default": 200,
             "format": "-logfilesize=<size>",
-            "desc": "Log file size(M) (default: 10M)"
+            "desc": "Log file size(M) (default: 200M)"
         },
         {
             "name": "nLogHistorySize",
@@ -108,7 +108,7 @@
             "opt": "rpcport",
             "default": 0,
             "format": "-rpcport=port",
-            "desc": "Listen for JSON-RPC connections on <port> (default: 7702 or testnet: 8804))"
+            "desc": "Listen for JSON-RPC connections on <port> (default: 7702 or testnet: 7704))"
         },
         {
             "name": "fRPCListen",
@@ -238,7 +238,7 @@
             "opt": "rpcmaxconnections",
             "default": "DEFAULT_RPC_MAX_CONNECTIONS",
             "format": "-rpcmaxconnections=<num>",
-            "desc": "Set max connections to <num> (default: 5)"
+            "desc": "Set max connections to <num> (default: 30)"
         },
         {
             "name": "vRPCAllowIP",
@@ -323,7 +323,7 @@
             "opt": "port",
             "default": 0,
             "format": "-port=<port>",
-            "desc": "Listen for connections on <port> (default: 7701 or testnet: 8803)"
+            "desc": "Listen for connections on <port> (default: 7701 or testnet: 7703)"
         },
         {
             "name": "strGateWay",
@@ -338,7 +338,7 @@
             "opt": "maxconnections",
             "default": "DEFAULT_MAX_OUTBOUNDS + DEFAULT_MAX_INBOUNDS",
             "format": "-maxconnections=<n>",
-            "desc": "Maintain at most <n> connections to peers (default: 125)"
+            "desc": "Maintain at most <n> connections to peers (default: 185)"
         },
         {
             "name": "nConnectTimeout",

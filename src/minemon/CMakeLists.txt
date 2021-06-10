@@ -48,7 +48,6 @@ set(src
     event.h
     base.h
     struct.h
-    param.h
     storage.h
     version.h
 )
