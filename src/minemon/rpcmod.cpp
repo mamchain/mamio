@@ -48,11 +48,6 @@ static int64 AmountFromValue(const double dAmount)
     return nAmount;
 }
 
-static double ValueFromAmount(int64 amount)
-{
-    return ((double)amount / (double)COIN);
-}
-
 static CBlockData BlockToJSON(const uint256& hashBlock, const CBlock& block, const uint256& hashFork, int nHeight)
 {
     CBlockData data;
@@ -96,8 +91,8 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
     }
     ret.strSendfrom = fromAddr;
     ret.strSendto = CAddress(tx.sendTo).ToString();
-    ret.dAmount = ValueFromAmount(tx.nAmount);
-    ret.dTxfee = ValueFromAmount(tx.nTxFee);
+    ret.dAmount = ValueFromCoin(tx.nAmount);
+    ret.dTxfee = ValueFromCoin(tx.nTxFee);
 
     std::string str(tx.vchData.begin(), tx.vchData.end());
     ret.strData = xengine::ToHexString(tx.vchData);
@@ -128,8 +123,8 @@ static CWalletTxData WalletTxToJSON(const CWalletTx& wtx)
         data.strFrom = CAddress(wtx.destIn).ToString();
     }
     data.strTo = CAddress(wtx.sendTo).ToString();
-    data.dAmount = ValueFromAmount(wtx.nAmount);
-    data.dFee = ValueFromAmount(wtx.nTxFee);
+    data.dAmount = ValueFromCoin(wtx.nAmount);
+    data.dFee = ValueFromCoin(wtx.nTxFee);
     data.nLockuntil = (boost::int64_t)wtx.nLockUntil;
     return data;
 }
@@ -139,7 +134,7 @@ static CUnspentData UnspentToJSON(const CTxUnspent& unspent)
     CUnspentData data;
     data.strTxid = unspent.hash.ToString();
     data.nOut = unspent.n;
-    data.dAmount = ValueFromAmount(unspent.output.nAmount);
+    data.dAmount = ValueFromCoin(unspent.output.nAmount);
     data.nTime = unspent.output.nTxTime;
     data.nLockuntil = unspent.output.nLockUntil;
     return data;
@@ -683,7 +678,7 @@ CRPCResultPtr CRPCMod::RPCListFork(CRPCParamPtr param)
         if (pForkManager->IsAllowed(vFork[i].first))
         {
             spResult->vecProfile.push_back({ vFork[i].first.GetHex(), profile.strName, profile.strSymbol,
-                                             (double)(profile.nAmount) / COIN, (double)(profile.nMintReward) / COIN, (uint64)(profile.nHalveCycle),
+                                             ValueFromCoin(profile.nAmount), ValueFromCoin(profile.nMintReward), (uint64)(profile.nHalveCycle),
                                              profile.IsIsolated(), profile.IsPrivate(), profile.IsEnclosed(),
                                              CAddress(profile.destOwner).ToString() });
         }
@@ -1481,9 +1476,9 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
         {
             CGetBalanceResult::CBalance b;
             b.strAddress = CAddress(dest).ToString();
-            b.dAvail = ValueFromAmount(balance.nAvailable);
-            b.dLocked = ValueFromAmount(balance.nLocked);
-            b.dUnconfirmed = ValueFromAmount(balance.nUnconfirmed);
+            b.dAvail = ValueFromCoin(balance.nAvailable);
+            b.dLocked = ValueFromCoin(balance.nLocked);
+            b.dUnconfirmed = ValueFromCoin(balance.nUnconfirmed);
             spResult->vecBalance.push_back(b);
         }
     }
@@ -2891,12 +2886,12 @@ CRPCResultPtr CRPCMod::RPCGetPledgeStatus(rpc::CRPCParamPtr param)
     }
 
     auto spResult = MakeCGetPledgeStatusResultPtr();
-    spResult->dMinpowpledge = ValueFromAmount(nMinPowPledge);
-    spResult->dMaxpowpledge = ValueFromAmount(nMaxPowPledge);
-    spResult->dMinstakepledge = ValueFromAmount(nMinStakePledge);
-    spResult->dTotalreward = ValueFromAmount(nTotalReward);
-    spResult->dMoneysupply = ValueFromAmount(nMoneySupply);
-    spResult->dSurplusreward = ValueFromAmount(nSurplusReward);
+    spResult->dMinpowpledge = ValueFromCoin(nMinPowPledge);
+    spResult->dMaxpowpledge = ValueFromCoin(nMaxPowPledge);
+    spResult->dMinstakepledge = ValueFromCoin(nMinStakePledge);
+    spResult->dTotalreward = ValueFromCoin(nTotalReward);
+    spResult->dMoneysupply = ValueFromCoin(nMoneySupply);
+    spResult->dSurplusreward = ValueFromCoin(nSurplusReward);
 
     return spResult;
 }

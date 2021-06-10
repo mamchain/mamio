@@ -20,15 +20,7 @@ else
     flagdebug="-DCMAKE_BUILD_TYPE=Release"
 fi
 
-flagtestnet=""
-if [[ "$1" = "testnet" || "$2" = "testnet" ]]
-then
-    flagtestnet="-DTESTNET=on"
-else
-    flagtestnet="-DTESTNET=off"
-fi
-
-cmake .. $flagdebug $flagtestnet
+cmake .. $flagdebug
 if [ $? -ne 0 ]; then 
     cd $origin_path
     exit 1 

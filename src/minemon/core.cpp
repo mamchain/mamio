@@ -13,37 +13,13 @@
 #include "../common/template/proof.h"
 #include "address.h"
 #include "crypto.h"
+#include "param.h"
 #include "wallet.h"
 
 using namespace std;
 using namespace xengine;
 
 #define DEBUG(err, ...) Debug((err), __FUNCTION__, __VA_ARGS__)
-
-static const int64 MAX_CLOCK_DRIFT = 80;
-
-static const int PROOF_OF_WORK_BITS_LOWER_LIMIT = 8;
-static const int PROOF_OF_WORK_BITS_UPPER_LIMIT = 200;
-#ifdef MINEMON_TESTNET
-static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 24;
-#else
-static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 45;
-#endif
-static const int PROOF_OF_WORK_BITS_INIT_TESTNET = 24;
-static const uint32 PROOF_OF_WORK_DIFFICULTY_INTERVAL_MAINNET = 10000;
-static const uint32 PROOF_OF_WORK_DIFFICULTY_INTERVAL_TESTNET = 30;
-
-static const int64 BBCP_INIT_REWARD_TOKEN = 0;
-static const int64 BBCP_INIT_BLOCK_REWARD_TOKEN = 100;
-static const int64 BBCP_REWARD_HALVE_HEIGHT = 60 * 24 * 365 * 2;
-static const int64 BBCP_POW_REWARD_RATE = 382;
-static const int64 BBCP_TOTAL_REWARD_RATE = 1000;
-static const int64 BBCP_MIN_PLEDGE_COIN = 100 * COIN;
-
-static const int BBCP_REPEAT_MINT_HEIGHT = 100;            
-static const int BBCP_PLEDGE_REWARD_DISTRIBUTE_HEIGHT = 1440;
-static const int BBCP_REDEEM_DAY_COUNT = 100;
-static const int BBCP_REDEEM_DAY_HEIGHT = 1440;
 
 namespace minemon
 {
@@ -56,8 +32,9 @@ CCoreProtocol::CCoreProtocol()
     nProofOfWorkLowerLimit.SetCompact(nProofOfWorkLowerLimit.GetCompact());
     nProofOfWorkUpperLimit = (~uint256(uint64(0)) >> PROOF_OF_WORK_BITS_UPPER_LIMIT);
     nProofOfWorkUpperLimit.SetCompact(nProofOfWorkUpperLimit.GetCompact());
-    nProofOfWorkInit = (~uint256(uint64(0)) >> PROOF_OF_WORK_BITS_INIT_MAINNET);
-    nProofOfWorkDifficultyInterval = PROOF_OF_WORK_DIFFICULTY_INTERVAL_MAINNET;
+    nProofOfWorkInit = (~uint256(uint64(0)) >> PROOF_OF_WORK_BITS_INIT);
+    nProofOfWorkDifficultyInterval = PROOF_OF_WORK_DIFFICULTY_INTERVAL;
+
     pBlockChain = nullptr;
 }
 
@@ -70,6 +47,7 @@ bool CCoreProtocol::HandleInitialize()
     CBlock block;
     GetGenesisBlock(block);
     hashGenesisBlock = block.GetHash();
+
     if (!GetObject("blockchain", pBlockChain))
     {
         return false;
@@ -101,31 +79,27 @@ Secret : f19c86f39741fe57cb2e0d5b9051787a1672437678c394ee2002979f6c247411
 
 void CCoreProtocol::GetGenesisBlock(CBlock& block)
 {
-#ifdef MINEMON_TESTNET
     const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("69b6974d772c6bdcf7f00cb664204c4c7ac81dd476144d78bc06efae37b27ede")));
-#else
-    const CDestination destOwner = CAddress("20804jmmhvgdq550rwfgwfrww16mbbvqx8zzdav1mpppdzg5b30n93cjd");
-#endif
 
     block.SetNull();
 
     block.nVersion = CBlock::BLOCK_VERSION;
     block.nType = CBlock::BLOCK_GENESIS;
-    block.nTimeStamp = 1620728407;
+    block.nTimeStamp = 1623312000;
     block.hashPrev = 0;
 
     CTransaction& tx = block.txMint;
     tx.nType = CTransaction::TX_GENESIS;
     tx.nTimeStamp = block.nTimeStamp;
     tx.sendTo = destOwner;
-    tx.nAmount = BBCP_INIT_REWARD_TOKEN * COIN;
+    tx.nAmount = BPX_INIT_REWARD_TOKEN;
 
     CProfile profile;
     profile.strName = "Minemon";
     profile.strSymbol = "MAM";
     profile.destOwner = destOwner;
     profile.nAmount = tx.nAmount;
-    profile.nMintReward = BBCP_INIT_REWARD_TOKEN * COIN;
+    profile.nMintReward = BPX_INIT_REWARD_TOKEN;
     profile.nMinTxFee = MIN_TX_FEE;
     profile.nHalveCycle = 0;
     profile.SetFlag(true, false, false);
@@ -682,34 +656,34 @@ int64 CCoreProtocol::GetMintWorkReward(const int nHeight)
     {
         return 0;
     }
-    return ((BBCP_INIT_BLOCK_REWARD_TOKEN * COIN) / (int64)pow(2, (nHeight - 1) / BBCP_REWARD_HALVE_HEIGHT));
+    return (BPX_INIT_BLOCK_REWARD_TOKEN / (int64)pow(2, (nHeight - 1) / BPX_REWARD_HALVE_HEIGHT));
 }
 
 int64 CCoreProtocol::GetBlockPowReward(const int nHeight)
 {
-    return GetMintWorkReward(nHeight) * BBCP_POW_REWARD_RATE / BBCP_TOTAL_REWARD_RATE;
+    return GetMintWorkReward(nHeight) * BPX_POW_REWARD_RATE / BPX_TOTAL_REWARD_RATE;
 }
 
 int64 CCoreProtocol::GetBlockPledgeReward(const int nHeight)
 {
-    return GetMintWorkReward(nHeight) * (BBCP_TOTAL_REWARD_RATE - BBCP_POW_REWARD_RATE) / BBCP_TOTAL_REWARD_RATE;
+    return GetMintWorkReward(nHeight) * (BPX_TOTAL_REWARD_RATE - BPX_POW_REWARD_RATE) / BPX_TOTAL_REWARD_RATE;
 }
 
 int64 CCoreProtocol::GetMintTotalReward(const int nHeight)
 {
     int64 nTotalReward = 0;
-    int64 nSectReward = BBCP_INIT_BLOCK_REWARD_TOKEN * COIN;
+    int64 nSectReward = BPX_INIT_BLOCK_REWARD_TOKEN;
     int nCalcHeight = nHeight;
     while (nCalcHeight > 0)
     {
-        if (nCalcHeight < BBCP_REWARD_HALVE_HEIGHT)
+        if (nCalcHeight < BPX_REWARD_HALVE_HEIGHT)
         {
             nTotalReward += (nSectReward * nCalcHeight);
             break;
         }
-        nTotalReward += (nSectReward * BBCP_REWARD_HALVE_HEIGHT);
+        nTotalReward += (nSectReward * BPX_REWARD_HALVE_HEIGHT);
         nSectReward /= 2;
-        nCalcHeight -= BBCP_REWARD_HALVE_HEIGHT;
+        nCalcHeight -= BPX_REWARD_HALVE_HEIGHT;
     }
     return nTotalReward;
 }
@@ -718,9 +692,9 @@ bool CCoreProtocol::GetPledgeMinMaxValue(const uint256& hashPrevBlock, int64& nP
 {
     if (hashPrevBlock == hashGenesisBlock)
     {
-        nPowMinPledge = BBCP_MIN_PLEDGE_COIN;
+        nPowMinPledge = BPX_MIN_PLEDGE_COIN;
         nMaxPledge = nPowMinPledge * 100;
-        nStakeMinPledge = BBCP_INIT_BLOCK_REWARD_TOKEN * COIN;
+        nStakeMinPledge = BPX_INIT_BLOCK_REWARD_TOKEN;
         return true;
     }
 
@@ -732,9 +706,9 @@ bool CCoreProtocol::GetPledgeMinMaxValue(const uint256& hashPrevBlock, int64& nP
     }
 
     nPowMinPledge = nMoneySupply / 10000;
-    if (nPowMinPledge < BBCP_MIN_PLEDGE_COIN)
+    if (nPowMinPledge < BPX_MIN_PLEDGE_COIN)
     {
-        nPowMinPledge = BBCP_MIN_PLEDGE_COIN;
+        nPowMinPledge = BPX_MIN_PLEDGE_COIN;
         nMaxPledge = nPowMinPledge * 100;
     }
     else
@@ -743,31 +717,15 @@ bool CCoreProtocol::GetPledgeMinMaxValue(const uint256& hashPrevBlock, int64& nP
     }
 
     nStakeMinPledge = 0;
-    int64 nSectValue = BBCP_INIT_BLOCK_REWARD_TOKEN * COIN;
+    int64 nSectValue = BPX_INIT_BLOCK_REWARD_TOKEN;
     int nCalcHeight = CBlock::GetBlockHeightByHash(hashPrevBlock) + 1;
     while (nCalcHeight > 0)
     {
         nStakeMinPledge += nSectValue;
         nSectValue /= 2;
-        nCalcHeight -= BBCP_REWARD_HALVE_HEIGHT;
+        nCalcHeight -= BPX_REWARD_HALVE_HEIGHT;
     }
     return true;
-}
-
-int CCoreProtocol::GetRepeatMintHeight()
-{
-    return BBCP_REPEAT_MINT_HEIGHT;
-}
-
-void CCoreProtocol::GetRedeemLimitParam(int& nRedeemDayCount, int& nRedeemDayHeight)
-{
-    nRedeemDayCount = BBCP_REDEEM_DAY_COUNT;
-    nRedeemDayHeight = BBCP_REDEEM_DAY_HEIGHT;
-}
-
-int CCoreProtocol::GetPledgeRewardDistributeHeight()
-{
-    return BBCP_PLEDGE_REWARD_DISTRIBUTE_HEIGHT;
 }
 
 uint32 CCoreProtocol::CalcSingleBlockDistributePledgeRewardTxCount()
@@ -1064,58 +1022,39 @@ Errno CCoreProtocol::VerifyMintPledgeTx(const CTransaction& tx)
 
 CTestNetCoreProtocol::CTestNetCoreProtocol()
 {
-    nProofOfWorkInit = (~uint256(uint64(0)) >> PROOF_OF_WORK_BITS_INIT_TESTNET);
-    nProofOfWorkDifficultyInterval = PROOF_OF_WORK_DIFFICULTY_INTERVAL_TESTNET;
 }
 
 /*
-
-PubKey : 68e4dca5989876ca64f16537e82d05c103e5695dfaf009a01632cb33639cc530
-Secret : ab14e1de9a0e805df0c79d50e1b065304814a247e7d52fc51fd0782e0eec27d6
-
+Address: 1fpt2z9nyh0a5999zrmabg6ppsbx78wypqapm29fsasx993z11crp6zm7
 PubKey : 310be18f947a56f92541adbad67374facad61ab814c53fa5541488bea62fb47d
 Secret : 14e1abd0802f7065b55f5076d0d2cfbea159abd540a977e8d3afd4b3061bf47f
-
-Secret1="f1547396c4ec9f50a646b6ac791ee11f0493adc04940289752c2dc0494e040f5"
-PubKey1="579792c544d6a6c198498250c1fa1467a5e5eeb59435a6cdeb06085fb8c7b091"
-
-Secret2="43368761015b9de09dce66826188a22d1cb9d98a2b6e599c56bc384f839d67ff"
-PubKey2="6d9657d15cb91e074f98fdcbbcf311325beb1d8c2c0f6d65d8362c15c213a2f1"
-
-Secret3="be590f4db119efcff0247e5e08c7e840454b948e7a5c2993f84c12db9770fd8a"
-PubKey3="efd6b29ad69ea477c4f0ac859cdd00039b83c5b074c8b2f4f9038a781b9d63d5"
-
-addnewtemplate multisig '{"required": 2, "pubkeys": ["579792c544d6a6c198498250c1fa1467a5e5eeb59435a6cdeb06085fb8c7b091", "6d9657d15cb91e074f98fdcbbcf311325beb1d8c2c0f6d65d8362c15c213a2f1", "efd6b29ad69ea477c4f0ac859cdd00039b83c5b074c8b2f4f9038a781b9d63d5"]}'
-2080fczk6yq3e44t7dpgbtef7zwfkc96b4670yj3wyvex5pv898hc6yr5
-
-sendfrom 2080fczk6yq3e44t7dpgbtef7zwfkc96b4670yj3wyvex5pv898hc6yr5 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 6000 1
 */
 void CTestNetCoreProtocol::GetGenesisBlock(CBlock& block)
 {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 
-    const CDestination destOwner = CAddress("2080fczk6yq3e44t7dpgbtef7zwfkc96b4670yj3wyvex5pv898hc6yr5");
+    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("310be18f947a56f92541adbad67374facad61ab814c53fa5541488bea62fb47d")));
 
     block.SetNull();
 
     block.nVersion = CBlock::BLOCK_VERSION;
     block.nType = CBlock::BLOCK_GENESIS;
-    block.nTimeStamp = 1620728407;
+    block.nTimeStamp = 1623312000;
     block.hashPrev = 0;
 
     CTransaction& tx = block.txMint;
     tx.nType = CTransaction::TX_GENESIS;
     tx.nTimeStamp = block.nTimeStamp;
     tx.sendTo = destOwner;
-    tx.nAmount = BBCP_INIT_REWARD_TOKEN * COIN; // initial number of token
+    tx.nAmount = BPX_INIT_REWARD_TOKEN; // initial number of token
 
     CProfile profile;
     profile.strName = "Minemon Test";
-    profile.strSymbol = "MAM";
+    profile.strSymbol = "MAMT";
     profile.destOwner = destOwner;
     profile.nAmount = tx.nAmount;
-    profile.nMintReward = BBCP_INIT_REWARD_TOKEN * COIN;
+    profile.nMintReward = BPX_INIT_REWARD_TOKEN;
     profile.nMinTxFee = MIN_TX_FEE;
     profile.nHalveCycle = 0;
     profile.SetFlag(true, false, false);
@@ -1147,16 +1086,9 @@ CProofOfWorkParam::CProofOfWorkParam(bool fTestnet)
     nProofOfWorkLowerLimit.SetCompact(nProofOfWorkLowerLimit.GetCompact());
     nProofOfWorkUpperLimit = (~uint256(uint64(0)) >> PROOF_OF_WORK_BITS_UPPER_LIMIT);
     nProofOfWorkUpperLimit.SetCompact(nProofOfWorkUpperLimit.GetCompact());
-    if (fTestnet)
-    {
-        nProofOfWorkInit = (~uint256(uint64(0)) >> PROOF_OF_WORK_BITS_INIT_TESTNET);
-        nProofOfWorkDifficultyInterval = PROOF_OF_WORK_DIFFICULTY_INTERVAL_TESTNET;
-    }
-    else
-    {
-        nProofOfWorkInit = (~uint256(uint64(0)) >> PROOF_OF_WORK_BITS_INIT_MAINNET);
-        nProofOfWorkDifficultyInterval = PROOF_OF_WORK_DIFFICULTY_INTERVAL_MAINNET;
-    }
+
+    nProofOfWorkInit = (~uint256(uint64(0)) >> PROOF_OF_WORK_BITS_INIT);
+    nProofOfWorkDifficultyInterval = PROOF_OF_WORK_DIFFICULTY_INTERVAL;
 }
 
 } // namespace minemon

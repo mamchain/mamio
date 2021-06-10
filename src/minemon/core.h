@@ -32,9 +32,6 @@ public:
     virtual int64 GetBlockPledgeReward(const int nHeight) override;
     virtual int64 GetMintTotalReward(const int nHeight) override;
     virtual bool GetPledgeMinMaxValue(const uint256& hashPrevBlock, int64& nPowMinPledge, int64& nStakeMinPledge, int64& nMaxPledge) override;
-    virtual int GetRepeatMintHeight() override;
-    virtual void GetRedeemLimitParam(int& nRedeemDayCount, int& nRedeemDayHeight) override;
-    virtual int GetPledgeRewardDistributeHeight() override;
     virtual uint32 CalcSingleBlockDistributePledgeRewardTxCount() override;
 
 protected:

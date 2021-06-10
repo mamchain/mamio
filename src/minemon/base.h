@@ -50,9 +50,6 @@ public:
     virtual int64 GetBlockPledgeReward(const int nHeight) = 0;
     virtual int64 GetMintTotalReward(const int nHeight) = 0;
     virtual bool GetPledgeMinMaxValue(const uint256& hashPrevBlock, int64& nPowMinPledge, int64& nStakeMinPledge, int64& nMaxPledge) = 0;
-    virtual int GetRepeatMintHeight() = 0;
-    virtual void GetRedeemLimitParam(int& nRedeemDayCount, int& nRedeemDayHeight) = 0;
-    virtual int GetPledgeRewardDistributeHeight() = 0;
     virtual uint32 CalcSingleBlockDistributePledgeRewardTxCount() = 0;
 };
 
