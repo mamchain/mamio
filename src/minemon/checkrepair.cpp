@@ -1667,7 +1667,7 @@ bool CCheckRepairData::FetchBlockData()
 bool CCheckRepairData::FetchUnspent()
 {
     CUnspentDB dbUnspent;
-    if (!dbUnspent.Initialize(path(strDataPath)))
+    if (!dbUnspent.Initialize(path(strDataPath), false))
     {
         StdError("Check", "FetchUnspent: dbUnspent Initialize fail");
         return false;
@@ -1676,9 +1676,9 @@ bool CCheckRepairData::FetchUnspent()
     map<uint256, CCheckBlockFork>::iterator it = objBlockWalker.mapCheckFork.begin();
     for (; it != objBlockWalker.mapCheckFork.end(); ++it)
     {
-        if (!dbUnspent.AddNewFork(it->first))
+        if (!dbUnspent.LoadFork(it->first))
         {
-            StdError("Check", "FetchUnspent: dbUnspent AddNewFork fail.");
+            StdError("Check", "FetchUnspent: dbUnspent LoadFork fail.");
             dbUnspent.Deinitialize();
             return false;
         }
@@ -2016,7 +2016,7 @@ bool CCheckRepairData::CheckBlockIndex()
 bool CCheckRepairData::CheckTxIndex()
 {
     CTxIndexDB dbTxIndex;
-    if (!dbTxIndex.Initialize(path(strDataPath)))
+    if (!dbTxIndex.Initialize(path(strDataPath), false))
     {
         StdLog("Check", "dbTxIndex Initialize fail");
         return false;
@@ -2146,7 +2146,7 @@ bool CCheckRepairData::RemoveTxPoolFile()
 bool CCheckRepairData::RepairUnspent()
 {
     CUnspentDB dbUnspent;
-    if (!dbUnspent.Initialize(path(strDataPath)))
+    if (!dbUnspent.Initialize(path(strDataPath), false))
     {
         StdLog("Check", "dbUnspent Initialize fail");
         return false;
@@ -2157,13 +2157,18 @@ bool CCheckRepairData::RepairUnspent()
     {
         if (!it->second.vAddUpdate.empty() || !it->second.vRemove.empty())
         {
-            if (!dbUnspent.AddNewFork(it->first))
+            if (!dbUnspent.LoadFork(it->first))
             {
-                StdLog("Check", "dbUnspent AddNewFork fail.");
+                StdLog("Check", "dbUnspent LoadFork fail.");
                 dbUnspent.Deinitialize();
                 return false;
             }
-            dbUnspent.RepairUnspent(it->first, it->second.vAddUpdate, it->second.vRemove);
+            if (!dbUnspent.RepairUnspent(it->first, it->second.vAddUpdate, it->second.vRemove))
+            {
+                StdLog("Check", "dbUnspent RepairUnspent fail.");
+                dbUnspent.Deinitialize();
+                return false;
+            }
         }
     }
 
