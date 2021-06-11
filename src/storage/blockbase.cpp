@@ -1455,7 +1455,7 @@ bool CBlockBase::GetBlockRedeemContext(const uint256& hashBlock, CRedeemContext&
     return dbBlock.RetrieveRedeemData(hashBlock, redeemData);
 }
 
-bool CBlockBase::GetMintPledgeData(const uint256& hashBlock, const CDestination& destMintPow, int64 nMinPledge, int64 nMaxPledge,
+bool CBlockBase::GetMintPledgeData(const uint256& hashBlock, const CDestination& destMintPow, const int64 nMinPledge, const int64 nMaxPledge,
                                    map<CDestination, int64>& mapValidPledge, int64& nTotalPledge)
 {
     mapValidPledge.clear();
