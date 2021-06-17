@@ -47,11 +47,13 @@ public:
     bool RetrieveTxIndex(const uint256& fork, const uint256& txid, CTxIndex& txIndex);
     bool RetrieveTxUnspent(const uint256& fork, const CTxOutPoint& out, CTxOut& unspent);
     bool WalkThroughUnspent(const uint256& hashFork, CForkUnspentDBWalker& walker);
+    bool AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn);
     bool RetrievePledge(const uint256& hash, CPledgeContext& ctxtPledge);
     bool UpdateTemplateData(const CDestination& dest, const std::vector<uint8>& vTemplateData);
     bool RetrieveTemplateData(const CDestination& dest, std::vector<uint8>& vTemplateData);
     bool UpdateRedeemData(const uint256& hashBlock, const CRedeemContext& redeemData);
     bool RetrieveRedeemData(const uint256& hashBlock, CRedeemContext& redeemData);
+    bool AddBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn);
 
 protected:
     bool LoadFork();

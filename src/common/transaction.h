@@ -770,12 +770,24 @@ class CRedeemContext
 public:
     CRedeemContext() {}
 
+    bool IsFull() const
+    {
+        return (hashRef == 0);
+    }
+    void Clear()
+    {
+        hashRef = 0;
+        mapRedeem.clear();
+    }
+
+public:
+    uint256 hashRef;
     std::map<CDestination, CDestRedeem> mapRedeem; // redeem address
 
 public:
     friend bool operator==(const CRedeemContext& a, const CRedeemContext& b)
     {
-        return (a.mapRedeem == b.mapRedeem);
+        return (a.hashRef == b.hashRef && a.mapRedeem == b.mapRedeem);
     }
     friend bool operator!=(const CRedeemContext& a, const CRedeemContext& b)
     {
@@ -786,6 +798,7 @@ protected:
     template <typename O>
     void Serialize(xengine::CStream& s, O& opt)
     {
+        s.Serialize(hashRef, opt);
         s.Serialize(mapRedeem, opt);
     }
 };

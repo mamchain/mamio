@@ -220,6 +220,11 @@ bool CBlockDB::WalkThroughUnspent(const uint256& hashFork, CForkUnspentDBWalker&
     return dbUnspent.WalkThrough(hashFork, walker);
 }
 
+bool CBlockDB::AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const map<CDestination, pair<CDestination, int64>>& mapBlockPledgeIn)
+{
+    return dbPledge.AddBlockPledge(hashBlock, hashPrev, mapBlockPledgeIn);
+}
+
 bool CBlockDB::RetrievePledge(const uint256& hash, CPledgeContext& ctxtPledge)
 {
     return dbPledge.Retrieve(hash, ctxtPledge);
@@ -243,6 +248,11 @@ bool CBlockDB::UpdateRedeemData(const uint256& hashBlock, const CRedeemContext& 
 bool CBlockDB::RetrieveRedeemData(const uint256& hashBlock, CRedeemContext& redeemData)
 {
     return dbRedeem.Retrieve(hashBlock, redeemData);
+}
+
+bool CBlockDB::AddBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn)
+{
+    return dbRedeem.AddBlockRedeem(hashBlock, hashPrev, vTxRedeemIn);
 }
 
 bool CBlockDB::LoadFork()

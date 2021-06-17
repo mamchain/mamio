@@ -22,22 +22,39 @@ class CRedeemDB : public xengine::CKVDB
 {
 public:
     CRedeemDB(const bool fCacheIn = true)
-      : fCache(fCacheIn), cacheRedeem(MAX_CACHE_COUNT) {}
+      : fCache(fCacheIn) {}
     bool Initialize(const boost::filesystem::path& pathData);
     void Deinitialize();
-    bool AddNew(const uint256& hashBlock, const CRedeemContext& redeemContext);
+    bool AddNew(const uint256& hashBlock, const CRedeemContext& ctxtRedeem);
     bool Remove(const uint256& hashBlock);
-    bool Retrieve(const uint256& hashBlock, CRedeemContext& redeemContext);
+    bool Retrieve(const uint256& hashBlock, CRedeemContext& ctxtRedeem);
+    bool AddBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn);
+    bool GetBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn, CRedeemContext& ctxtRedeem);
+    bool RetrieveBlockRedeem(const uint256& hashBlock, CRedeemContext& ctxtRedeem);
     void Clear();
+
+protected:
+    bool IsFullRedeem(const uint256& hashBlock);
+    bool GetFullBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn, CRedeemContext& ctxtRedeem);
+    bool GetIncrementBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn, CRedeemContext& ctxtRedeem);
+
+    bool AddRedeem(const uint256& hashBlock, const CRedeemContext& ctxtRedeem);
+    bool RemoveRedeem(const uint256& hashBlock);
+    bool GetRedeem(const uint256& hashBlock, CRedeemContext& ctxtRedeem);
+    bool GetRedeem(const uint256& hashBlock, std::map<CDestination, CDestRedeem>& mapRedeemOut);
+
+    void AddCache(const uint256& hashBlock, const CRedeemContext& ctxtRedeem);
 
 protected:
     enum
     {
-        MAX_CACHE_COUNT = 1024
+        MAX_FULL_CACHE_COUNT = 16,
+        MAX_INC_CACHE_COUNT = 1440 * 2,
     };
     bool fCache;
-    xengine::CCache<uint256, CRedeemContext> cacheRedeem;
     xengine::CRWAccess rwData;
+    std::map<uint256, CRedeemContext> mapCacheFullRedeem;
+    std::map<uint256, CRedeemContext> mapCacheIncRedeem;
 };
 
 } // namespace storage
