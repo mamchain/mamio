@@ -1794,15 +1794,6 @@ bool CBlockBase::UpdateTxTemplateData(const uint256& hashBlock, const CBlockEx& 
 
 bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
 {
-    CPledgeContext ctxtPledge;
-    if (block.hashPrev != 0)
-    {
-        if (!dbBlock.RetrievePledge(block.hashPrev, ctxtPledge))
-        {
-            StdError("CBlockBase", "UpdatePledge: RetrievePledge fail");
-            return false;
-        }
-    }
     map<CDestination, pair<CDestination, int64>> mapBlockPledge; // pledge address, pow address
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
@@ -1810,7 +1801,7 @@ bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
         const CTxContxt& txcontxt = block.vTxContxt[i];
         if (tx.nType == CTransaction::TX_STAKE)
         {
-            StdDebug("CBlockBase", "UpdatePledge: Distribute reward tx: height: %d, reward: %ld, dest: %s, tx: %s",
+            StdDebug("CBlockBase", "Update Pledge: Distribute reward tx: height: %d, reward: %ld, dest: %s, tx: %s",
                      block.GetBlockHeight(), tx.nAmount, CAddress(tx.sendTo).ToString().c_str(), tx.GetHash().GetHex().c_str());
         }
         if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_MINTPLEDGE)
@@ -1825,13 +1816,13 @@ bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
                 vector<uint8> vTemplateData;
                 if (!dbBlock.RetrieveTemplateData(tx.sendTo, vTemplateData))
                 {
-                    StdLog("CBlockBase", "UpdatePledge: sendTo RetrieveTemplateData fail");
+                    StdLog("CBlockBase", "Update Pledge: sendTo RetrieveTemplateData fail");
                     return false;
                 }
                 ptr = CTemplate::CreateTemplatePtr(TEMPLATE_MINTPLEDGE, vTemplateData);
                 if (!ptr)
                 {
-                    StdLog("CBlockBase", "UpdatePledge: sendTo CreateTemplatePtr fail");
+                    StdLog("CBlockBase", "Update Pledge: sendTo CreateTemplatePtr fail");
                     return false;
                 }
             }
@@ -1848,13 +1839,13 @@ bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
                 CTemplatePtr ptr = CTemplate::CreateTemplatePtr(tx.sendTo.GetTemplateId().GetType(), tx.vchSig);
                 if (!ptr)
                 {
-                    StdLog("CBlockBase", "UpdatePledge: destIn sendTo CreateTemplatePtr fail");
+                    StdLog("CBlockBase", "Update Pledge: destIn sendTo CreateTemplatePtr fail");
                     return false;
                 }
                 set<CDestination> setSubDest;
                 if (!ptr->GetSignDestination(tx, uint256(), 0, tx.vchSig, setSubDest, vDestInData))
                 {
-                    StdLog("CBlockBase", "UpdatePledge: destIn GetSignDestination fail");
+                    StdLog("CBlockBase", "Update Pledge: destIn GetSignDestination fail");
                     return false;
                 }
             }
@@ -1872,13 +1863,13 @@ bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
                 vector<uint8> vTemplateData;
                 if (!dbBlock.RetrieveTemplateData(txcontxt.destIn, vTemplateData))
                 {
-                    StdLog("CBlockBase", "UpdatePledge: destIn RetrieveTemplateData fail");
+                    StdLog("CBlockBase", "Update Pledge: destIn RetrieveTemplateData fail");
                     return false;
                 }
                 ptr = CTemplate::CreateTemplatePtr(TEMPLATE_MINTPLEDGE, vTemplateData);
                 if (!ptr)
                 {
-                    StdLog("CBlockBase", "UpdatePledge: destIn CreateTemplatePtr fail");
+                    StdLog("CBlockBase", "Update Pledge: destIn CreateTemplatePtr fail");
                     return false;
                 }
             }
@@ -1888,35 +1879,9 @@ bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
             md.second -= (tx.nAmount + tx.nTxFee);
         }
     }
-    for (const auto& kv : mapBlockPledge)
+    if (!dbBlock.AddBlockPledge(hashBlock, block.hashPrev, mapBlockPledge))
     {
-        ctxtPledge.mapPledge[kv.second.first][kv.first] += kv.second.second;
-    }
-    for (auto it = ctxtPledge.mapPledge.begin(); it != ctxtPledge.mapPledge.end();)
-    {
-        for (auto mt = it->second.begin(); mt != it->second.end();)
-        {
-            if (mt->second <= 0)
-            {
-                it->second.erase(mt++);
-            }
-            else
-            {
-                ++mt;
-            }
-        }
-        if (it->second.empty())
-        {
-            ctxtPledge.mapPledge.erase(it++);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-    if (!dbBlock.UpdatePledgeContext(hashBlock, ctxtPledge))
-    {
-        StdError("CBlockBase", "UpdatePledge: UpdatePledgeContext fail");
+        StdError("CBlockBase", "Update Pledge: Add block pledge fail");
         return false;
     }
     return true;
@@ -1924,46 +1889,23 @@ bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
 
 bool CBlockBase::UpdateRedeem(const uint256& hashBlock, const CBlockEx& block)
 {
-    CRedeemContext ctxtRedeem;
-    if (block.hashPrev != 0)
-    {
-        if (!dbBlock.RetrieveRedeemData(block.hashPrev, ctxtRedeem))
-        {
-            StdError("CBlockBase", "UpdateRedeem: RetrieveRedeemData fail");
-            return false;
-        }
-    }
+    vector<pair<CDestination, int64>> vTxRedeem;
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
         const CTxContxt& txcontxt = block.vTxContxt[i];
         if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
         {
-            CDestRedeem& destRedeem = ctxtRedeem.mapRedeem[tx.sendTo];
-            destRedeem.nBalance += tx.nAmount;
-            destRedeem.nLockAmount = destRedeem.nBalance;
-            destRedeem.nLockBeginHeight = block.GetBlockHeight();
+            vTxRedeem.push_back(make_pair(tx.sendTo, tx.nAmount));
         }
         if (txcontxt.destIn.IsTemplate() && txcontxt.destIn.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
         {
-            CDestRedeem& destRedeem = ctxtRedeem.mapRedeem[txcontxt.destIn];
-            destRedeem.nBalance -= (tx.nAmount + tx.nTxFee);
+            vTxRedeem.push_back(make_pair(txcontxt.destIn, 0 - (tx.nAmount + tx.nTxFee)));
         }
     }
-    for (auto it = ctxtRedeem.mapRedeem.begin(); it != ctxtRedeem.mapRedeem.end();)
+    if (!dbBlock.AddBlockRedeem(hashBlock, block.hashPrev, vTxRedeem))
     {
-        if (it->second.nBalance <= 0)
-        {
-            ctxtRedeem.mapRedeem.erase(it++);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-    if (!dbBlock.UpdateRedeemData(hashBlock, ctxtRedeem))
-    {
-        StdError("CBlockBase", "UpdateRedeem: UpdateRedeemData fail");
+        StdError("CBlockBase", "Update Redeem: Add block redeem fail");
         return false;
     }
     return true;

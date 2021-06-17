@@ -24,12 +24,26 @@ class CPledgeContext
 public:
     CPledgeContext() {}
 
-    std::map<CDestination, std::map<CDestination, int64>> mapPledge; // pow address, pledge address
+    bool IsFull() const
+    {
+        return (hashRef == 0);
+    }
+    void Clear()
+    {
+        hashRef = 0;
+        mapBlockPledge.clear();
+        mapPledge.clear();
+    }
+
+public:
+    uint256 hashRef;
+    std::map<CDestination, std::pair<CDestination, int64>> mapBlockPledge; // pledge address, pow address
+    std::map<CDestination, std::map<CDestination, int64>> mapPledge;       // pow address, pledge address
 
 public:
     friend bool operator==(const CPledgeContext& a, const CPledgeContext& b)
     {
-        return (a.mapPledge == b.mapPledge);
+        return (a.hashRef == b.hashRef && a.mapBlockPledge == b.mapBlockPledge && a.mapPledge == b.mapPledge);
     }
     friend bool operator!=(const CPledgeContext& a, const CPledgeContext& b)
     {
@@ -40,6 +54,8 @@ protected:
     template <typename O>
     void Serialize(xengine::CStream& s, O& opt)
     {
+        s.Serialize(hashRef, opt);
+        s.Serialize(mapBlockPledge, opt);
         s.Serialize(mapPledge, opt);
     }
 };
@@ -48,22 +64,39 @@ class CPledgeDB : public xengine::CKVDB
 {
 public:
     CPledgeDB(const bool fCacheIn = true)
-      : fCache(fCacheIn), cachePledge(MAX_CACHE_COUNT) {}
+      : fCache(fCacheIn) {}
     bool Initialize(const boost::filesystem::path& pathData);
     void Deinitialize();
     bool AddNew(const uint256& hashBlock, const CPledgeContext& ctxtPledge);
     bool Remove(const uint256& hashBlock);
     bool Retrieve(const uint256& hashBlock, CPledgeContext& ctxtPledge);
+    bool AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn);
+    bool GetBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
+    bool RetrieveBlockPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge);
     void Clear();
+
+protected:
+    bool IsFullPledge(const uint256& hashBlock);
+    bool GetFullBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
+    bool GetIncrementBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
+
+    bool AddPledge(const uint256& hashBlock, const CPledgeContext& ctxtPledge);
+    bool RemovePledge(const uint256& hashBlock);
+    bool GetPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge);
+    bool GetPledge(const uint256& hashBlock, std::map<CDestination, std::map<CDestination, int64>>& mapPledgeOut);
+
+    void AddCache(const uint256& hashBlock, const CPledgeContext& ctxtPledge);
 
 protected:
     enum
     {
-        MAX_CACHE_COUNT = 1024
+        MAX_FULL_CACHE_COUNT = 16,
+        MAX_INC_CACHE_COUNT = 1440 * 2,
     };
     bool fCache;
-    xengine::CCache<uint256, CPledgeContext> cachePledge;
     xengine::CRWAccess rwData;
+    std::map<uint256, CPledgeContext> mapCacheFullPledge;
+    std::map<uint256, CPledgeContext> mapCacheIncPledge;
 };
 
 } // namespace storage

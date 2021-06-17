@@ -1383,15 +1383,6 @@ bool CCheckBlockWalker::ClearSurplusTemplateData()
 
 bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
 {
-    CPledgeContext ctxtPledge;
-    if (block.hashPrev != 0)
-    {
-        if (!dbPledge.Retrieve(block.hashPrev, ctxtPledge))
-        {
-            StdLog("Check", "Update pledge: Retrieve prev pledge fail, prev block: %s", block.hashPrev.GetHex().c_str());
-            return false;
-        }
-    }
     map<CDestination, pair<CDestination, int64>> mapBlockPledge; // pledge address, pow address
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
@@ -1472,36 +1463,17 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
             md.second -= (tx.nAmount + tx.nTxFee);
         }
     }
-    for (const auto& kv : mapBlockPledge)
+
+    CPledgeContext ctxtPledge;
+    if (!dbPledge.GetBlockPledge(hashBlock, block.hashPrev, mapBlockPledge, ctxtPledge))
     {
-        ctxtPledge.mapPledge[kv.second.first][kv.first] += kv.second.second;
-    }
-    for (auto it = ctxtPledge.mapPledge.begin(); it != ctxtPledge.mapPledge.end();)
-    {
-        for (auto mt = it->second.begin(); mt != it->second.end();)
-        {
-            if (mt->second <= 0)
-            {
-                it->second.erase(mt++);
-            }
-            else
-            {
-                ++mt;
-            }
-        }
-        if (it->second.empty())
-        {
-            ctxtPledge.mapPledge.erase(it++);
-        }
-        else
-        {
-            ++it;
-        }
+        StdLog("Check", "Update pledge: Get block pledge fail, block: %s", hashBlock.GetHex().c_str());
+        return false;
     }
 
     bool fUpdate = false;
     CPledgeContext ctxtCurPledge;
-    if (!dbPledge.Retrieve(hashBlock, ctxtCurPledge))
+    if (!dbPledge.RetrieveBlockPledge(hashBlock, ctxtCurPledge))
     {
         StdLog("Check", "Update pledge: Retrieve pledge fail, block: %s", hashBlock.GetHex().c_str());
         if (fOnlyCheck)
@@ -1535,47 +1507,31 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
 
 bool CCheckBlockWalker::UpdateRedeem(const uint256& hashBlock, const CBlockEx& block)
 {
-    CRedeemContext ctxtRedeem;
-    if (block.hashPrev != 0)
-    {
-        if (!dbRedeem.Retrieve(block.hashPrev, ctxtRedeem))
-        {
-            StdLog("Check", "Update redeem: Retrieve prev redeem fail, prev block: %s", block.hashPrev.GetHex().c_str());
-            return false;
-        }
-    }
+    vector<pair<CDestination, int64>> vTxRedeem;
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
         const CTxContxt& txcontxt = block.vTxContxt[i];
         if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
         {
-            CDestRedeem& destRedeem = ctxtRedeem.mapRedeem[tx.sendTo];
-            destRedeem.nBalance += tx.nAmount;
-            destRedeem.nLockAmount = destRedeem.nBalance;
-            destRedeem.nLockBeginHeight = block.GetBlockHeight();
+            vTxRedeem.push_back(make_pair(tx.sendTo, tx.nAmount));
         }
         if (txcontxt.destIn.IsTemplate() && txcontxt.destIn.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
         {
-            CDestRedeem& destRedeem = ctxtRedeem.mapRedeem[txcontxt.destIn];
-            destRedeem.nBalance -= (tx.nAmount + tx.nTxFee);
+            vTxRedeem.push_back(make_pair(txcontxt.destIn, 0 - (tx.nAmount + tx.nTxFee)));
         }
     }
-    for (auto it = ctxtRedeem.mapRedeem.begin(); it != ctxtRedeem.mapRedeem.end();)
+
+    CRedeemContext ctxtRedeem;
+    if (!dbRedeem.GetBlockRedeem(hashBlock, block.hashPrev, vTxRedeem, ctxtRedeem))
     {
-        if (it->second.nBalance <= 0)
-        {
-            ctxtRedeem.mapRedeem.erase(it++);
-        }
-        else
-        {
-            ++it;
-        }
+        StdLog("Check", "Update redeem: Get block redeem fail, block: %s", hashBlock.GetHex().c_str());
+        return false;
     }
 
     bool fUpdate = false;
     CRedeemContext ctxtCurRedeem;
-    if (!dbRedeem.Retrieve(hashBlock, ctxtCurRedeem))
+    if (!dbRedeem.RetrieveBlockRedeem(hashBlock, ctxtCurRedeem))
     {
         StdLog("Check", "Update redeem: Retrieve redeem fail, block: %s", hashBlock.GetHex().c_str());
         if (fOnlyCheck)
@@ -1588,7 +1544,7 @@ bool CCheckBlockWalker::UpdateRedeem(const uint256& hashBlock, const CBlockEx& b
     {
         if (ctxtCurRedeem != ctxtRedeem)
         {
-            StdLog("Check", "Update redeem: redeem error, block: %s", hashBlock.GetHex().c_str());
+            StdLog("Check", "Update redeem: Pledge error, block: %s", hashBlock.GetHex().c_str());
             if (fOnlyCheck)
             {
                 return false;
@@ -1600,6 +1556,7 @@ bool CCheckBlockWalker::UpdateRedeem(const uint256& hashBlock, const CBlockEx& b
     {
         if (!dbRedeem.AddNew(hashBlock, ctxtRedeem))
         {
+            StdLog("Check", "Update redeem: Add redeem fail, block: %s", hashBlock.GetHex().c_str());
             return false;
         }
     }
