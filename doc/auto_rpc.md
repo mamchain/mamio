@@ -4,7 +4,7 @@
 RPC command protocol detailed definition.  
 Includes command line format, options and arguments, JSON-RPC request and response field, errors and examples.  
 JSON-RPC version is [2.0](https://www.jsonrpc.org/specification#request_object).  
-RPC protocol document [see](https://gitlab.lomocoin.com//Minemon/MinemonCoreWallet/wiki/JSON-RPC)
+RPC protocol document [see](https://github.com/mamchain/mamio/wiki/JSON-RPC)
 
 ## difference with JSON-RPC 2.0
 1. Response object is required.
