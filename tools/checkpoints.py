@@ -3,7 +3,6 @@
 # -*- coding: utf-8 -*-
 
 # This tool refer to btcd checkpoint candidate tool
-# https://github.com/minemoncore/Minemon/issues/343
 
 import json
 import subprocess
