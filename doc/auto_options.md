@@ -34,7 +34,7 @@ class CNetworkConfigOption
         "opt": "rpcmaxconnections",     // (required) option of command-line
         "default": "DEFAULT_RPC_MAX_CONNECTIONS",           // (optional) default value of parameter
         "format": "-rpcmaxconnections=<num>",               // (required) prefix formatting in help
-        "desc": "Set max connections to <num> (default: 5)" // (optional) description in help
+        "desc": "Set max connections to <num> (default: 30)" // (optional) description in help
     },
     // second option
     {
@@ -74,7 +74,7 @@ protected:
 	{
         ostringstream oss;
         // corresponding to "format"        "desc" in json
-		oss << "  -rpcmaxconnections=<num>                      Set max connections to <num> (default: 5)\n";
+		oss << "  -rpcmaxconnections=<num>                      Set max connections to <num> (default: 30)\n";
 		oss << "  -rpcallowip=<ip>                              Allow JSON-RPC connections from specified <ip> address\n";
 		return oss.str();
 	}

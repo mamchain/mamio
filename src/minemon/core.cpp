@@ -1025,16 +1025,16 @@ CTestNetCoreProtocol::CTestNetCoreProtocol()
 }
 
 /*
-Address: 1fpt2z9nyh0a5999zrmabg6ppsbx78wypqapm29fsasx993z11crp6zm7
-PubKey : 310be18f947a56f92541adbad67374facad61ab814c53fa5541488bea62fb47d
-Secret : 14e1abd0802f7065b55f5076d0d2cfbea159abd540a977e8d3afd4b3061bf47f
+Address: 1ge5wyx5x93yxcawhhq67wywa4ngrd8gghtaqwn22njhha4vztfmr8cpn
+PubKey : e9d37f1315a3ac42547e958e10a28661258a7b7ecc8d912bd6fd48bd74cf8b83
+Secret : 338f01358e2d0fa66a496c16f1838f9464a85a04d800923a757e722a0daf093e
 */
 void CTestNetCoreProtocol::GetGenesisBlock(CBlock& block)
 {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 
-    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("310be18f947a56f92541adbad67374facad61ab814c53fa5541488bea62fb47d")));
+    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("e9d37f1315a3ac42547e958e10a28661258a7b7ecc8d912bd6fd48bd74cf8b83")));
 
     block.SetNull();
 
