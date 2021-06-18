@@ -25,4 +25,3 @@ libreadline       5.0
 
 References
 ----------
-Source Installation: https://gitlab.lomocoin.com//Minemon/MinemonCoreWallet/wiki/source-installation
