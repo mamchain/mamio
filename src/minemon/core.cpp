@@ -72,14 +72,14 @@ const uint256& CCoreProtocol::GetGenesisBlockHash()
 }
 
 /*
-Address : 1vszb4dxexw3bry2d2hvd87e8f964r834pr6f1xywdcp7ekcqpsmv08h3
-PubKey : 69b6974d772c6bdcf7f00cb664204c4c7ac81dd476144d78bc06efae37b27ede
-Secret : f19c86f39741fe57cb2e0d5b9051787a1672437678c394ee2002979f6c247411
+Address : 12dqbjzz6mann5581zqtn3w2vmqgmv8fv5mz185mx5yzpq47j662wcka3
+PubKey : 8531f2906bbf2f9d16143e2dfba14de1a55bf051f5fd019552aba2e67fb96e13
+Secret : 62c921d895140d83bd709caef55976cb774535f045c2c4deaafed4f0a58b5698
 */
 
 void CCoreProtocol::GetGenesisBlock(CBlock& block)
 {
-    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("69b6974d772c6bdcf7f00cb664204c4c7ac81dd476144d78bc06efae37b27ede")));
+    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("8531f2906bbf2f9d16143e2dfba14de1a55bf051f5fd019552aba2e67fb96e13")));
 
     block.SetNull();
 
