@@ -94,6 +94,9 @@ void CCoreProtocol::GetGenesisBlock(CBlock& block)
     tx.sendTo = destOwner;
     tx.nAmount = BPX_INIT_REWARD_TOKEN;
 
+    string strData("Lord chief justice calls for slimmed down bitcoin, no, it's juries.");
+    tx.vchData.assign(strData.begin(), strData.end());
+
     CProfile profile;
     profile.strName = "Minemon";
     profile.strSymbol = "MAM";
