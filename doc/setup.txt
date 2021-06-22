@@ -1,4 +1,4 @@
-Ubuntu16.04/18.04
+# Ubuntu16.04/18.04
 
 sudo apt install -y g++ libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf
 
@@ -27,3 +27,11 @@ sudo apt install -y cmake libssl1.0-dev libprotobuf-dev protobuf-compiler
   ./configure --prefix=/usr
   make -j8
   sudo make install
+
+# Get source code
+git clone https://github.com/mamchain/mamio.git
+
+# Ubuntu Build
+cd mamio
+./INSTALL.sh
+minemon -help
