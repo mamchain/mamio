@@ -144,16 +144,19 @@ public:
             nTotalTxFee += tx.nTxFee;
         }
         int64 nPledgeReward = 0;
-        if (!txMint.vchData.empty())
+        if (!IsGenesis())
         {
-            try
+            if (!txMint.vchData.empty())
             {
-                xengine::CIDataStream ds(txMint.vchData);
-                ds >> nPledgeReward;
-            }
-            catch (std::exception& e)
-            {
-                return -1;
+                try
+                {
+                    xengine::CIDataStream ds(txMint.vchData);
+                    ds >> nPledgeReward;
+                }
+                catch (std::exception& e)
+                {
+                    return -1;
+                }
             }
         }
         return ((txMint.nAmount + nPledgeReward) - nTotalTxFee);
