@@ -1738,6 +1738,28 @@ bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<
 
 bool CBlockBase::UpdateTxTemplateData(const uint256& hashBlock, const CBlockEx& block)
 {
+    if (block.txMint.sendTo.IsTemplate() && CTemplate::IsDestInRecorded(block.txMint.sendTo))
+    {
+        CTemplatePtr ptr = CTemplate::CreateTemplatePtr(block.txMint.sendTo.GetTemplateId().GetType(), block.txMint.vchSig);
+        if (!ptr)
+        {
+            StdLog("CBlockBase", "Update Tx Template Data: mint tx sendto error, sendto: %s, block: %s",
+                   CAddress(block.txMint.sendTo).ToString().c_str(), hashBlock.GetHex().c_str());
+            return false;
+        }
+        if (ptr->GetTemplateId() != block.txMint.sendTo.GetTemplateId())
+        {
+            StdLog("CBlockBase", "Update Tx Template Data: mint tx templateid error, sendto: %s, block: %s",
+                   CAddress(block.txMint.sendTo).ToString().c_str(), hashBlock.GetHex().c_str());
+            return false;
+        }
+        if (!dbBlock.UpdateTemplateData(block.txMint.sendTo, ptr->GetTemplateData()))
+        {
+            StdLog("CBlockBase", "Update Tx Template Data: mint tx update fail, sendto: %s, block: %s",
+                   CAddress(block.txMint.sendTo).ToString().c_str(), hashBlock.GetHex().c_str());
+            return false;
+        }
+    }
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
@@ -1750,19 +1772,27 @@ bool CBlockBase::UpdateTxTemplateData(const uint256& hashBlock, const CBlockEx& 
                 CTemplatePtr ptr = CTemplate::CreateTemplatePtr(tx.sendTo.GetTemplateId().GetType(), tx.vchSig);
                 if (!ptr)
                 {
+                    StdLog("CBlockBase", "Update Tx Template Data: send tx sendto error, sendto: %s, tx: %s, block: %s",
+                           CAddress(tx.sendTo).ToString().c_str(), tx.GetHash().GetHex().c_str(), hashBlock.GetHex().c_str());
                     return false;
                 }
                 if (ptr->GetTemplateId() != tx.sendTo.GetTemplateId())
                 {
+                    StdLog("CBlockBase", "Update Tx Template Data: send tx templateid error, sendto: %s, tx: %s, block: %s",
+                           CAddress(tx.sendTo).ToString().c_str(), tx.GetHash().GetHex().c_str(), hashBlock.GetHex().c_str());
                     return false;
                 }
                 if (!dbBlock.UpdateTemplateData(tx.sendTo, ptr->GetTemplateData()))
                 {
+                    StdLog("CBlockBase", "Update Tx Template Data: send tx update fail, sendto: %s, tx: %s, block: %s",
+                           CAddress(tx.sendTo).ToString().c_str(), tx.GetHash().GetHex().c_str(), hashBlock.GetHex().c_str());
                     return false;
                 }
                 set<CDestination> setSubDest;
                 if (!ptr->GetSignDestination(tx, uint256(), 0, tx.vchSig, setSubDest, vDestInData))
                 {
+                    StdLog("CBlockBase", "Update Tx Template Data: send tx get sign fail, sendto: %s, tx: %s, block: %s",
+                           CAddress(tx.sendTo).ToString().c_str(), tx.GetHash().GetHex().c_str(), hashBlock.GetHex().c_str());
                     return false;
                 }
             }
@@ -1776,14 +1806,20 @@ bool CBlockBase::UpdateTxTemplateData(const uint256& hashBlock, const CBlockEx& 
                 CTemplatePtr ptr = CTemplate::CreateTemplatePtr(txcontxt.destIn.GetTemplateId().GetType(), vDestInData);
                 if (!ptr)
                 {
+                    StdLog("CBlockBase", "Update Tx Template Data: send tx destIn error, destIn: %s, tx: %s, block: %s",
+                           CAddress(txcontxt.destIn).ToString().c_str(), tx.GetHash().GetHex().c_str(), hashBlock.GetHex().c_str());
                     return false;
                 }
                 if (ptr->GetTemplateId() != txcontxt.destIn.GetTemplateId())
                 {
+                    StdLog("CBlockBase", "Update Tx Template Data: send tx templateid error, destIn: %s, tx: %s, block: %s",
+                           CAddress(txcontxt.destIn).ToString().c_str(), tx.GetHash().GetHex().c_str(), hashBlock.GetHex().c_str());
                     return false;
                 }
                 if (!dbBlock.UpdateTemplateData(txcontxt.destIn, ptr->GetTemplateData()))
                 {
+                    StdLog("CBlockBase", "Update Tx Template Data: send tx update fail, destIn: %s, tx: %s, block: %s",
+                           CAddress(txcontxt.destIn).ToString().c_str(), tx.GetHash().GetHex().c_str(), hashBlock.GetHex().c_str());
                     return false;
                 }
             }
