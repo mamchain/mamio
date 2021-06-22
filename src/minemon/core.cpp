@@ -92,7 +92,7 @@ void CCoreProtocol::GetGenesisBlock(CBlock& block)
     tx.nType = CTransaction::TX_GENESIS;
     tx.nTimeStamp = block.nTimeStamp;
     tx.sendTo = destOwner;
-    tx.nAmount = 200000000 * COIN; //BPX_INIT_REWARD_TOKEN;
+    tx.nAmount = BPX_INIT_REWARD_TOKEN;
 
     string strData("Lord chief justice calls for slimmed down bitcoin, no, it's juries.");
     tx.vchData.assign(strData.begin(), strData.end());
