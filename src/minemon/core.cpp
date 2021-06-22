@@ -85,7 +85,7 @@ void CCoreProtocol::GetGenesisBlock(CBlock& block)
 
     block.nVersion = CBlock::BLOCK_VERSION;
     block.nType = CBlock::BLOCK_GENESIS;
-    block.nTimeStamp = 1623312000;
+    block.nTimeStamp = 1624353002;
     block.hashPrev = 0;
 
     CTransaction& tx = block.txMint;
@@ -93,6 +93,9 @@ void CCoreProtocol::GetGenesisBlock(CBlock& block)
     tx.nTimeStamp = block.nTimeStamp;
     tx.sendTo = destOwner;
     tx.nAmount = BPX_INIT_REWARD_TOKEN;
+
+    string strData("Lord chief justice calls for slimmed down bitcoin, no, it's juries.");
+    tx.vchData.assign(strData.begin(), strData.end());
 
     CProfile profile;
     profile.strName = "Minemon";
@@ -1040,7 +1043,7 @@ void CTestNetCoreProtocol::GetGenesisBlock(CBlock& block)
 
     block.nVersion = CBlock::BLOCK_VERSION;
     block.nType = CBlock::BLOCK_GENESIS;
-    block.nTimeStamp = 1623312000;
+    block.nTimeStamp = 1624353002;
     block.hashPrev = 0;
 
     CTransaction& tx = block.txMint;
