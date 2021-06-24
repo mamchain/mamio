@@ -1260,6 +1260,28 @@ bool CCheckBlockWalker::CheckBlockIndex()
 
 bool CCheckBlockWalker::UpdateTxTemplateData(const uint256& hashBlock, const CBlockEx& block)
 {
+    if (block.txMint.sendTo.IsTemplate() && CTemplate::IsDestInRecorded(block.txMint.sendTo))
+    {
+        CTemplatePtr ptr = CTemplate::CreateTemplatePtr(block.txMint.sendTo.GetTemplateId().GetType(), block.txMint.vchSig);
+        if (!ptr)
+        {
+            StdLog("Check", "Update Tx Template Data: mint tx sendto error, sendto: %s, block: %s",
+                   CAddress(block.txMint.sendTo).ToString().c_str(), hashBlock.GetHex().c_str());
+            return false;
+        }
+        if (ptr->GetTemplateId() != block.txMint.sendTo.GetTemplateId())
+        {
+            StdLog("Check", "Update Tx Template Data: mint tx templateid error, sendto: %s, block: %s",
+                   CAddress(block.txMint.sendTo).ToString().c_str(), hashBlock.GetHex().c_str());
+            return false;
+        }
+        if (!UpdateDestTemplateData(block.txMint.sendTo, ptr->GetTemplateData()))
+        {
+            StdLog("Check", "Update Tx Template Data: mint tx update fail, sendto: %s, block: %s",
+                   CAddress(block.txMint.sendTo).ToString().c_str(), hashBlock.GetHex().c_str());
+            return false;
+        }
+    }
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
