@@ -1396,6 +1396,10 @@ CRPCResultPtr CRPCMod::RPCValidateAddress(CRPCParamPtr param)
             CTemplateId tid = address.GetTemplateId();
             uint16 nType = tid.GetType();
             CTemplatePtr ptr = pService->GetTemplate(tid);
+            if (ptr == nullptr)
+            {
+                ptr = pService->GetDbTemplate(tid);
+            }
             addressData.fIsmine = (ptr != nullptr);
             addressData.strType = "template";
             addressData.strTemplate = CTemplate::GetTypeName(nType);

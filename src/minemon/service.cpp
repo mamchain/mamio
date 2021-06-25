@@ -537,6 +537,24 @@ CTemplatePtr CService::GetTemplate(const CTemplateId& tid)
     return pWallet->GetTemplate(tid);
 }
 
+CTemplatePtr CService::GetDbTemplate(const CTemplateId& tid)
+{
+    CDestination dest(tid);
+    std::vector<uint8> vTemplateData;
+    if (!pBlockChain->GetDbTemplateData(dest, vTemplateData))
+    {
+        StdLog("CService", "Get db template data: Get db template data fail, dest: %s", CAddress(dest).ToString().c_str());
+        return nullptr;
+    }
+    CTemplatePtr ptr = CTemplate::CreateTemplatePtr(tid.GetType(), vTemplateData);
+    if (ptr == nullptr)
+    {
+        StdLog("CService", "Get db template data: CreateTemplatePtr fail, dest: %s", CAddress(dest).ToString().c_str());
+        return nullptr;
+    }
+    return ptr;
+}
+
 bool CService::GetBalance(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
 {
     int nForkHeight = GetForkHeight(hashFork);

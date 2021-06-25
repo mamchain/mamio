@@ -1072,6 +1072,16 @@ bool CBlockChain::GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, 
     return true;
 }
 
+bool CBlockChain::GetDbTemplateData(const CDestination& dest, std::vector<uint8>& vTemplateData)
+{
+    if (!cntrBlock.RetrieveTemplateData(dest, vTemplateData))
+    {
+        StdLog("BlockChain", "Get mint template param: GetDbTemplateData fail, dest: %s", CAddress(dest).ToString().c_str());
+        return false;
+    }
+    return true;
+}
+
 bool CBlockChain::InsertGenesisBlock(CBlock& block)
 {
     return cntrBlock.Initiate(block.GetHash(), block, uint256());
