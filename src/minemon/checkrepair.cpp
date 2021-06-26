@@ -1664,6 +1664,7 @@ bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlock
             {
                 StdLog("Check", "Check pledge reward: block stake tx error, stake tx count: %ld, height: %d, block: %s",
                        nStakeTxCount, CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                return false;
             }
         }
         else
@@ -1678,9 +1679,11 @@ bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlock
                 StdLog("Check", "Check pledge reward: stake tx count != calc reward count, stake tx count: %ld, calc reward count: %ld, height: %d, block: %s",
                        nStakeTxCount, nBlockRewardCount,
                        CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                return false;
             }
             else
             {
+                int nErrorRewardTxCount = 0;
                 int nStartIndex = nSingleBlockTxCount * nHeightDiff;
                 for (size_t i = 0; i < nBlockRewardCount; i++)
                 {
@@ -1690,6 +1693,7 @@ bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlock
                     {
                         StdLog("Check", "Check pledge reward: tx type error, type: %d, height: %d, block: %s",
                                tx.nType, CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                        nErrorRewardTxCount++;
                     }
                     else
                     {
@@ -1723,12 +1727,14 @@ bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlock
                             StdLog("Check", "Check pledge reward: sendTo error, sendTo: %s, reward dest: %s, txid: %s, height: %d, block: %s",
                                    CAddress(tx.sendTo).ToString().c_str(), CAddress(destReward).ToString().c_str(), tx.GetHash().GetHex().c_str(),
                                    CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                            nErrorRewardTxCount++;
                         }
                         else if (tx.nAmount != calcReward.second)
                         {
                             StdLog("Check", "Check pledge reward: nAmount error, nAmount: %f, reward amount: %f, sendTo: %s, txid: %s, height: %d, block: %s",
                                    ValueFromCoin(tx.nAmount), ValueFromCoin(calcReward.second), CAddress(tx.sendTo).ToString().c_str(), tx.GetHash().GetHex().c_str(),
                                    CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                            nErrorRewardTxCount++;
                         }
                         /*else
                         {
@@ -1737,6 +1743,12 @@ bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlock
                                    CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
                         }*/
                     }
+                }
+                if (nErrorRewardTxCount > 0)
+                {
+                    StdLog("Check", "Check pledge reward: Verify reward tx fail, count: %d, height: %d, block: %s",
+                           nErrorRewardTxCount, CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                    return false;
                 }
             }
         }
