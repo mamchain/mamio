@@ -1763,16 +1763,22 @@ bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlock
 
     auto& calcPledgeReward = mapBlockPledgeReward[hashBlock];
     calcPledgeReward = mapBlockPledgeReward[block.hashPrev];
-    for (auto& kv : calcPledgeReward)
+
+    for (auto it = calcPledgeReward.begin(); it != calcPledgeReward.end();)
     {
-        kv.second.second = 0;
+        if (it->second == 0)
+        {
+            calcPledgeReward.erase(it++);
+        }
+        else
+        {
+            ++it;
+        }
     }
 
     for (const auto& kv : mapPledgeRewardValue)
     {
-        auto& reward = calcPledgeReward[kv.first];
-        reward.first += kv.second;
-        reward.second = kv.second;
+        calcPledgeReward[kv.first] += kv.second;
     }
 
     if ((CBlock::GetBlockHeightByHash(hashBlock) % nDistributeHeight) == 0)
@@ -1782,8 +1788,8 @@ bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlock
         vRewardTable.reserve(calcPledgeReward.size());
         for (auto& kv : calcPledgeReward)
         {
-            vRewardTable.push_back(make_pair(kv.first, kv.second.first));
-            kv.second.first = 0;
+            vRewardTable.push_back(make_pair(kv.first, kv.second));
+            kv.second = 0;
         }
     }
 

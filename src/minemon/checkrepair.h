@@ -407,7 +407,7 @@ public:
     map<uint256, CBlockIndex*> mapBlockIndex;
     map<CDestination, pair<vector<uint8>, int>> mapTemplateData;
     map<uint256, CPledgeContext> mapBlockPledge;
-    map<uint256, map<CDestination, pair<int64, int64>>> mapBlockPledgeReward;
+    map<uint256, map<CDestination, int64>> mapBlockPledgeReward;
     map<uint256, vector<pair<CDestination, int64>>> mapSectPledgeReward;
     CBlockIndexDB dbBlockIndex;
     CCheckBlockIndexWalker objBlockIndexWalker;
