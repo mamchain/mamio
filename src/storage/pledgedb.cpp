@@ -177,28 +177,7 @@ bool CPledgeDB::GetFullBlockPledge(const uint256& hashBlock, const uint256& hash
     {
         ctxtPledge.mapPledge[kv.second.first][kv.first] += kv.second.second;
     }
-    for (auto it = ctxtPledge.mapPledge.begin(); it != ctxtPledge.mapPledge.end();)
-    {
-        for (auto mt = it->second.begin(); mt != it->second.end();)
-        {
-            if (mt->second <= 0)
-            {
-                it->second.erase(mt++);
-            }
-            else
-            {
-                ++mt;
-            }
-        }
-        if (it->second.empty())
-        {
-            ctxtPledge.mapPledge.erase(it++);
-        }
-        else
-        {
-            ++it;
-        }
-    }
+    ctxtPledge.ClearEmpty();
     return true;
 }
 
@@ -216,7 +195,7 @@ bool CPledgeDB::GetIncrementBlockPledge(const uint256& hashBlock, const uint256&
         destPledge.first = kv.second.first;
         destPledge.second += kv.second.second;
     }
-    for (auto it = ctxtPledge.mapBlockPledge.begin(); it != ctxtPledge.mapBlockPledge.end();)
+    /*for (auto it = ctxtPledge.mapBlockPledge.begin(); it != ctxtPledge.mapBlockPledge.end();)
     {
         if (it->second.second <= 0)
         {
@@ -226,7 +205,7 @@ bool CPledgeDB::GetIncrementBlockPledge(const uint256& hashBlock, const uint256&
         {
             ++it;
         }
-    }
+    }*/
 
     if (ctxtPledge.IsFull())
     {

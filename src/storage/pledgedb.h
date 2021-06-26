@@ -34,6 +34,31 @@ public:
         mapBlockPledge.clear();
         mapPledge.clear();
     }
+    void ClearEmpty()
+    {
+        for (auto it = mapPledge.begin(); it != mapPledge.end();)
+        {
+            for (auto mt = it->second.begin(); mt != it->second.end();)
+            {
+                if (mt->second == 0)
+                {
+                    it->second.erase(mt++);
+                }
+                else
+                {
+                    ++mt;
+                }
+            }
+            if (it->second.empty())
+            {
+                mapPledge.erase(it++);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
 
 public:
     uint256 hashRef;
