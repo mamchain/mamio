@@ -61,6 +61,7 @@ public:
     bool GetPowMintTemplateParam(const CDestination& destMint, CDestination& destSpent, uint32& nPledgeFee) override;
     bool CalcDistributePledgeReward(const uint256& hashBlock, std::map<CDestination, int64>& mapPledgeReward) override;
     bool GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, const uint32 nPrevBlockTime, std::vector<CTransaction>& vPledgeRewardTxList) override;
+    bool GetDbTemplateData(const CDestination& dest, std::vector<uint8>& vTemplateData) override;
 
     /////////////    CheckPoints    /////////////////////
     bool HasCheckPoints() const override;

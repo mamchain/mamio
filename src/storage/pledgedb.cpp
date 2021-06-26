@@ -195,17 +195,6 @@ bool CPledgeDB::GetIncrementBlockPledge(const uint256& hashBlock, const uint256&
         destPledge.first = kv.second.first;
         destPledge.second += kv.second.second;
     }
-    /*for (auto it = ctxtPledge.mapBlockPledge.begin(); it != ctxtPledge.mapBlockPledge.end();)
-    {
-        if (it->second.second <= 0)
-        {
-            ctxtPledge.mapBlockPledge.erase(it++);
-        }
-        else
-        {
-            ++it;
-        }
-    }*/
 
     if (ctxtPledge.IsFull())
     {

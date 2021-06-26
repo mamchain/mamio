@@ -1470,8 +1470,8 @@ bool CBlockBase::GetMintPledgeData(const uint256& hashBlock, const CDestination&
     auto it = ctxtPledge.mapPledge.find(destMintPow);
     if (it == ctxtPledge.mapPledge.end())
     {
-        StdDebug("CBlockBase", "Get Mint Pledge Data: destMintPow find fail, block: %s, destMintPow: %s, pledge size: %ld",
-                 hashBlock.GetHex().c_str(), CAddress(destMintPow).ToString().c_str(), ctxtPledge.mapPledge.size());
+        //StdDebug("CBlockBase", "Get Mint Pledge Data: destMintPow find fail, block: %s, destMintPow: %s, pledge size: %ld",
+        //         hashBlock.GetHex().c_str(), CAddress(destMintPow).ToString().c_str(), ctxtPledge.mapPledge.size());
     }
     else
     {

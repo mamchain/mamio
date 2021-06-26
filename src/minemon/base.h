@@ -139,6 +139,7 @@ public:
     virtual bool GetPowMintTemplateParam(const CDestination& destMint, CDestination& destSpent, uint32& nPledgeFee) = 0;
     virtual bool CalcDistributePledgeReward(const uint256& hashBlock, std::map<CDestination, int64>& mapPledgeReward) = 0;
     virtual bool GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, const uint32 nPrevBlockTime, std::vector<CTransaction>& vPledgeRewardTxList) = 0;
+    virtual bool GetDbTemplateData(const CDestination& dest, std::vector<uint8>& vTemplateData) = 0;
 
     const CBasicConfig* Config()
     {
@@ -326,6 +327,7 @@ public:
     virtual void GetTemplateIds(std::set<CTemplateId>& setTid) = 0;
     virtual bool AddTemplate(CTemplatePtr& ptr) = 0;
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) = 0;
+    virtual CTemplatePtr GetDbTemplate(const CTemplateId& tid) = 0;
     virtual bool GetBalance(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
     virtual bool ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) = 0;
     virtual boost::optional<std::string> CreateTransaction(const uint256& hashFork, const CDestination& destFrom,
