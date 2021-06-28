@@ -47,8 +47,9 @@ public:
     bool RetrieveTxIndex(const uint256& fork, const uint256& txid, CTxIndex& txIndex);
     bool RetrieveTxUnspent(const uint256& fork, const CTxOutPoint& out, CTxOut& unspent);
     bool WalkThroughUnspent(const uint256& hashFork, CForkUnspentDBWalker& walker);
-    bool AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn);
-    bool RetrievePledge(const uint256& hash, CPledgeContext& ctxtPledge);
+    bool AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn);
+    bool RetrievePowPledgeList(const uint256& hashBlock, const CDestination& destPowMint, std::map<CDestination, std::pair<int64, int>>& mapPowPledgeList);
+    bool RetrieveAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight);
     bool UpdateTemplateData(const CDestination& dest, const std::vector<uint8>& vTemplateData);
     bool RetrieveTemplateData(const CDestination& dest, std::vector<uint8>& vTemplateData);
     bool UpdateRedeemData(const uint256& hashBlock, const CRedeemContext& redeemData);

@@ -849,8 +849,29 @@ bool CService::GetWorkTx(const CTemplateMintPtr& templMint, const uint32 nPrevBl
     return true;
 }
 
-bool CService::GetPledgeStatus(const uint256& hashBlock, int64& nMinPowPledge, int64& nMaxPowPledge, int64& nMinStakePledge, int64& nTotalReward, int64& nMoneySupply, int64& SurplusReward)
+bool CService::GetPledgeStatus(uint256& hashBlock, const int nHeight, int64& nMinPowPledge, int64& nMaxPowPledge, int64& nMinStakePledge, int64& nTotalReward, int64& nMoneySupply, int64& SurplusReward)
 {
+    if (hashBlock == 0)
+    {
+        if (nHeight > 0)
+        {
+            int64 nTime = 0;
+            if (!pBlockChain->GetLastBlockOfHeight(pCoreProtocol->GetGenesisBlockHash(), nHeight, hashBlock, nTime))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            int nHeight;
+            int64 nTime;
+            uint16 nMintType;
+            if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashBlock, nHeight, nTime, nMintType))
+            {
+                return false;
+            }
+        }
+    }
     if (!pCoreProtocol->GetPledgeMinMaxValue(hashBlock, nMinPowPledge, nMinStakePledge, nMaxPowPledge))
     {
         return false;
@@ -858,6 +879,36 @@ bool CService::GetPledgeStatus(const uint256& hashBlock, int64& nMinPowPledge, i
     nMoneySupply = pBlockChain->GetBlockMoneySupply(hashBlock);
     nTotalReward = pCoreProtocol->GetMintTotalReward(CBlock::GetBlockHeightByHash(hashBlock));
     SurplusReward = nTotalReward - nMoneySupply;
+    return true;
+}
+
+bool CService::GetAddressPledge(uint256& hashBlock, const int nHeight, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight)
+{
+    if (hashBlock == 0)
+    {
+        if (nHeight > 0)
+        {
+            int64 nTime = 0;
+            if (!pBlockChain->GetLastBlockOfHeight(pCoreProtocol->GetGenesisBlockHash(), nHeight, hashBlock, nTime))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            int nHeight;
+            int64 nTime;
+            uint16 nMintType;
+            if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashBlock, nHeight, nTime, nMintType))
+            {
+                return false;
+            }
+        }
+    }
+    if (!pBlockChain->GetAddressPledgeAmount(hashBlock, destPledge, nPledgeAmount, nPledgeHeight))
+    {
+        return false;
+    }
     return true;
 }
 

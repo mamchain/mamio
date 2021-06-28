@@ -56,32 +56,13 @@ bool CPledgeDB::Remove(const uint256& hashBlock)
     return RemovePledge(hashBlock);
 }
 
-bool CPledgeDB::Retrieve(const uint256& hashBlock, CPledgeContext& ctxtPledge)
+bool CPledgeDB::RetrieveFullPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge)
 {
     xengine::CReadLock rlock(rwData);
-    if (!GetPledge(hashBlock, ctxtPledge))
-    {
-        StdError("CPledgeDB", "Retrieve: Get pledge fail, block: %s", hashBlock.GetHex().c_str());
-        return false;
-    }
-    if (!ctxtPledge.IsFull())
-    {
-        if (!GetPledge(ctxtPledge.hashRef, ctxtPledge.mapPledge))
-        {
-            StdError("CPledgeDB", "Retrieve: Get pledge fail, ref: %s", ctxtPledge.hashRef.GetHex().c_str());
-            return false;
-        }
-        for (const auto& kv : ctxtPledge.mapBlockPledge)
-        {
-            ctxtPledge.mapPledge[kv.second.first][kv.first] += kv.second.second;
-        }
-        ctxtPledge.hashRef = 0;
-        ctxtPledge.mapBlockPledge.clear();
-    }
-    return true;
+    return GetFullPledge(hashBlock, ctxtPledge);
 }
 
-bool CPledgeDB::AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const map<CDestination, pair<CDestination, int64>>& mapBlockPledgeIn)
+bool CPledgeDB::AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn)
 {
     xengine::CWriteLock wlock(rwData);
 
@@ -111,7 +92,7 @@ bool CPledgeDB::AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev
     return true;
 }
 
-bool CPledgeDB::GetBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge)
+bool CPledgeDB::GetBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge)
 {
     xengine::CReadLock rlock(rwData);
     if (IsFullPledge(hashBlock))
@@ -137,6 +118,18 @@ bool CPledgeDB::RetrieveBlockPledge(const uint256& hashBlock, CPledgeContext& ct
     return GetPledge(hashBlock, ctxtPledge);
 }
 
+bool CPledgeDB::RetrievePowPledgeList(const uint256& hashBlock, const CDestination& destPowMint, std::map<CDestination, std::pair<int64, int>>& mapPowPledgeList)
+{
+    xengine::CReadLock rlock(rwData);
+    return GetPowPledgeList(hashBlock, destPowMint, mapPowPledgeList);
+}
+
+bool CPledgeDB::RetrieveAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight)
+{
+    xengine::CReadLock rlock(rwData);
+    return GetAddressPledgeData(hashBlock, destPowMint, destPledge, nPledgeAmount, nPledgeHeight);
+}
+
 void CPledgeDB::Clear()
 {
     mapCacheFullPledge.clear();
@@ -150,77 +143,86 @@ bool CPledgeDB::IsFullPledge(const uint256& hashBlock)
     return ((CBlock::GetBlockHeightByHash(hashBlock) % BPX_PLEDGE_REWARD_DISTRIBUTE_HEIGHT) == 1);
 }
 
-bool CPledgeDB::GetFullBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const map<CDestination, pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge)
+bool CPledgeDB::GetFullBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge)
 {
-    if (!GetPledge(hashPrev, ctxtPledge))
+    if (!GetFullPledge(hashPrev, ctxtPledge))
     {
         StdError("CPledgeDB", "Get full: Get pledge fail");
         return false;
     }
-
-    if (!ctxtPledge.IsFull())
-    {
-        if (!GetPledge(ctxtPledge.hashRef, ctxtPledge.mapPledge))
-        {
-            StdError("CPledgeDB", "Get full: Get pledge fail, ref: %s", ctxtPledge.hashRef.GetHex().c_str());
-            return false;
-        }
-        for (const auto& kv : ctxtPledge.mapBlockPledge)
-        {
-            ctxtPledge.mapPledge[kv.second.first][kv.first] += kv.second.second;
-        }
-    }
-    ctxtPledge.hashRef = 0;
-    ctxtPledge.mapBlockPledge.clear();
-
     for (const auto& kv : mapBlockPledgeIn)
     {
-        ctxtPledge.mapPledge[kv.second.first][kv.first] += kv.second.second;
-    }
-    for (auto it = ctxtPledge.mapPledge.begin(); it != ctxtPledge.mapPledge.end();)
-    {
-        for (auto mt = it->second.begin(); mt != it->second.end();)
+        for (const auto& vd : kv.second)
         {
-            if (mt->second <= 0)
+            auto& md = ctxtPledge.mapPledge[kv.first][vd.first];
+            md.first += vd.second.first;
+            if (vd.second.second > 0)
             {
-                it->second.erase(mt++);
-            }
-            else
-            {
-                ++mt;
+                md.second = vd.second.second;
             }
         }
-        if (it->second.empty())
-        {
-            ctxtPledge.mapPledge.erase(it++);
-        }
-        else
-        {
-            ++it;
-        }
     }
+    ctxtPledge.ClearEmpty();
     return true;
 }
 
-bool CPledgeDB::GetIncrementBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const map<CDestination, pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge)
+bool CPledgeDB::GetIncrementBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge)
 {
     if (!GetPledge(hashPrev, ctxtPledge))
     {
         StdError("CPledgeDB", "Get increment: Get pledge fail");
         return false;
     }
-
-    for (const auto& kv : mapBlockPledgeIn)
-    {
-        auto& destPledge = ctxtPledge.mapBlockPledge[kv.first];
-        destPledge.first = kv.second.first;
-        destPledge.second += kv.second.second;
-    }
-
     if (ctxtPledge.IsFull())
     {
         ctxtPledge.hashRef = hashPrev;
         ctxtPledge.mapPledge.clear();
+    }
+    for (const auto& kv : mapBlockPledgeIn)
+    {
+        for (const auto& vd : kv.second)
+        {
+            auto& md = ctxtPledge.mapPledge[kv.first][vd.first];
+            md.first += vd.second.first;
+            if (vd.second.second > 0)
+            {
+                md.second = vd.second.second;
+            }
+        }
+    }
+    return true;
+}
+
+bool CPledgeDB::GetFullPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge)
+{
+    if (!GetPledge(hashBlock, ctxtPledge))
+    {
+        StdError("CPledgeDB", "Get full pledge: Get pledge fail");
+        return false;
+    }
+    if (!ctxtPledge.IsFull())
+    {
+        std::map<CDestination, std::map<CDestination, std::pair<int64, int>>> mapIncPledge;
+        mapIncPledge = ctxtPledge.mapPledge;
+        ctxtPledge.mapPledge.clear();
+        if (!GetPledge(ctxtPledge.hashRef, ctxtPledge.mapPledge))
+        {
+            StdError("CPledgeDB", "Get full pledge: Get pledge fail, ref: %s", ctxtPledge.hashRef.GetHex().c_str());
+            return false;
+        }
+        for (const auto& kv : mapIncPledge)
+        {
+            for (const auto& vd : kv.second)
+            {
+                auto& md = ctxtPledge.mapPledge[kv.first][vd.first];
+                md.first += vd.second.first;
+                if (vd.second.second > 0)
+                {
+                    md.second = vd.second.second;
+                }
+            }
+        }
+        ctxtPledge.hashRef = 0;
     }
     return true;
 }
@@ -256,11 +258,11 @@ bool CPledgeDB::RemovePledge(const uint256& hashBlock)
     return Erase(hashBlock);
 }
 
-bool CPledgeDB::GetPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge)
+CPledgeContext* CPledgeDB::GetCachePledgeContext(const uint256& hashBlock)
 {
     if (hashBlock == 0)
     {
-        return true;
+        return nullptr;
     }
     if (fCache)
     {
@@ -269,35 +271,61 @@ bool CPledgeDB::GetPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge)
             auto it = mapCacheFullPledge.find(hashBlock);
             if (it == mapCacheFullPledge.end())
             {
+                CPledgeContext ctxtPledge;
                 if (!Read(hashBlock, ctxtPledge))
                 {
-                    StdError("CPledgeDB", "Get pledge: Read fail");
-                    return false;
+                    StdError("CPledgeDB", "Get cache pledge: Read fail, block: %s", hashBlock.GetHex().c_str());
+                    return nullptr;
                 }
                 AddCache(hashBlock, ctxtPledge);
+                it = mapCacheFullPledge.find(hashBlock);
+                if (it == mapCacheFullPledge.end())
+                {
+                    StdError("CPledgeDB", "Get cache pledge: Find fail, block: %s", hashBlock.GetHex().c_str());
+                    return nullptr;
+                }
             }
-            else
-            {
-                ctxtPledge = it->second;
-            }
+            return &(it->second);
         }
         else
         {
             auto it = mapCacheIncPledge.find(hashBlock);
             if (it == mapCacheIncPledge.end())
             {
+                CPledgeContext ctxtPledge;
                 if (!Read(hashBlock, ctxtPledge))
                 {
-                    StdError("CPledgeDB", "Get pledge: Read fail");
-                    return false;
+                    StdError("CPledgeDB", "Get cache pledge: Read fail, block: %s", hashBlock.GetHex().c_str());
+                    return nullptr;
                 }
                 AddCache(hashBlock, ctxtPledge);
+                it = mapCacheIncPledge.find(hashBlock);
+                if (it == mapCacheIncPledge.end())
+                {
+                    StdError("CPledgeDB", "Get cache pledge: Find fail, block: %s", hashBlock.GetHex().c_str());
+                    return nullptr;
+                }
             }
-            else
-            {
-                ctxtPledge = it->second;
-            }
+            return &(it->second);
         }
+    }
+    return nullptr;
+}
+
+bool CPledgeDB::GetPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge)
+{
+    if (hashBlock == 0)
+    {
+        return true;
+    }
+    if (fCache)
+    {
+        CPledgeContext* pCachePledge = GetCachePledgeContext(hashBlock);
+        if (pCachePledge == nullptr)
+        {
+            return false;
+        }
+        ctxtPledge = *pCachePledge;
     }
     else
     {
@@ -310,7 +338,7 @@ bool CPledgeDB::GetPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge)
     return true;
 }
 
-bool CPledgeDB::GetPledge(const uint256& hashBlock, map<CDestination, map<CDestination, int64>>& mapPledgeOut)
+bool CPledgeDB::GetPledge(const uint256& hashBlock, std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapPledgeOut)
 {
     mapPledgeOut.clear();
     if (hashBlock == 0)
@@ -319,44 +347,12 @@ bool CPledgeDB::GetPledge(const uint256& hashBlock, map<CDestination, map<CDesti
     }
     if (fCache)
     {
-        if (IsFullPledge(hashBlock))
+        CPledgeContext* pCachePledge = GetCachePledgeContext(hashBlock);
+        if (pCachePledge == nullptr)
         {
-            auto it = mapCacheFullPledge.find(hashBlock);
-            if (it == mapCacheFullPledge.end())
-            {
-                CPledgeContext ctxtPledge;
-                if (!Read(hashBlock, ctxtPledge))
-                {
-                    StdError("CPledgeDB", "Get pledge: Read fail");
-                    return false;
-                }
-                AddCache(hashBlock, ctxtPledge);
-                mapPledgeOut = ctxtPledge.mapPledge;
-            }
-            else
-            {
-                mapPledgeOut = it->second.mapPledge;
-            }
+            return false;
         }
-        else
-        {
-            auto it = mapCacheIncPledge.find(hashBlock);
-            if (it == mapCacheIncPledge.end())
-            {
-                CPledgeContext ctxtPledge;
-                if (!Read(hashBlock, ctxtPledge))
-                {
-                    StdError("CPledgeDB", "Get pledge: Read fail");
-                    return false;
-                }
-                AddCache(hashBlock, ctxtPledge);
-                mapPledgeOut = ctxtPledge.mapPledge;
-            }
-            else
-            {
-                mapPledgeOut = it->second.mapPledge;
-            }
-        }
+        mapPledgeOut = pCachePledge->mapPledge;
     }
     else
     {
@@ -367,6 +363,151 @@ bool CPledgeDB::GetPledge(const uint256& hashBlock, map<CDestination, map<CDesti
             return false;
         }
         mapPledgeOut = ctxtPledge.mapPledge;
+    }
+    return true;
+}
+
+bool CPledgeDB::GetPowPledgeList(const uint256& hashBlock, const CDestination& destPowMint, std::map<CDestination, std::pair<int64, int>>& mapPowPledgeList)
+{
+    if (hashBlock == 0)
+    {
+        return true;
+    }
+    if (fCache)
+    {
+        CPledgeContext* pCachePledge = GetCachePledgeContext(hashBlock);
+        if (pCachePledge == nullptr)
+        {
+            return false;
+        }
+        if (IsFullPledge(hashBlock))
+        {
+            auto it = pCachePledge->mapPledge.find(destPowMint);
+            if (it != pCachePledge->mapPledge.end())
+            {
+                mapPowPledgeList = it->second;
+            }
+        }
+        else
+        {
+            CPledgeContext* pCacheRefPledge = GetCachePledgeContext(pCachePledge->hashRef);
+            if (pCacheRefPledge == nullptr)
+            {
+                return false;
+            }
+            auto it = pCacheRefPledge->mapPledge.find(destPowMint);
+            if (it != pCacheRefPledge->mapPledge.end())
+            {
+                mapPowPledgeList = it->second;
+            }
+            auto nt = pCachePledge->mapPledge.find(destPowMint);
+            if (nt != pCachePledge->mapPledge.end())
+            {
+                for (const auto& kv : nt->second)
+                {
+                    auto& powPledge = mapPowPledgeList[kv.first];
+                    powPledge.first += kv.second.first;
+                    if (kv.second.second > 0)
+                    {
+                        powPledge.second = kv.second.second;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        CPledgeContext ctxtPledge;
+        if (!GetFullPledge(hashBlock, ctxtPledge))
+        {
+            return false;
+        }
+        auto it = ctxtPledge.mapPledge.find(destPowMint);
+        if (it != ctxtPledge.mapPledge.end())
+        {
+            mapPowPledgeList = it->second;
+        }
+    }
+    return true;
+}
+
+bool CPledgeDB::GetAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight)
+{
+    nPledgeAmount = 0;
+    nPledgeHeight = 0;
+    if (hashBlock == 0)
+    {
+        return true;
+    }
+    if (fCache)
+    {
+        CPledgeContext* pCachePledge = GetCachePledgeContext(hashBlock);
+        if (pCachePledge == nullptr)
+        {
+            return false;
+        }
+        if (IsFullPledge(hashBlock))
+        {
+            auto it = pCachePledge->mapPledge.find(destPowMint);
+            if (it != pCachePledge->mapPledge.end())
+            {
+                auto mt = it->second.find(destPledge);
+                if (mt != it->second.end())
+                {
+                    nPledgeAmount = mt->second.first;
+                    nPledgeHeight = mt->second.second;
+                }
+            }
+        }
+        else
+        {
+            CPledgeContext* pCacheRefPledge = GetCachePledgeContext(pCachePledge->hashRef);
+            if (pCacheRefPledge == nullptr)
+            {
+                return false;
+            }
+            auto nt = pCacheRefPledge->mapPledge.find(destPowMint);
+            if (nt != pCacheRefPledge->mapPledge.end())
+            {
+                auto mt = nt->second.find(destPledge);
+                if (mt != nt->second.end())
+                {
+                    nPledgeAmount = mt->second.first;
+                    nPledgeHeight = mt->second.second;
+                }
+            }
+            auto kt = pCachePledge->mapPledge.find(destPowMint);
+            if (kt != pCachePledge->mapPledge.end())
+            {
+                auto mt = kt->second.find(destPledge);
+                if (mt != kt->second.end())
+                {
+                    nPledgeAmount += mt->second.first;
+                    if (mt->second.second > 0)
+                    {
+                        nPledgeHeight = mt->second.second;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        CPledgeContext ctxtPledge;
+        if (!GetFullPledge(hashBlock, ctxtPledge))
+        {
+            return false;
+        }
+        auto it = ctxtPledge.mapPledge.find(destPowMint);
+        if (it != ctxtPledge.mapPledge.end())
+        {
+            auto mt = it->second.find(destPledge);
+            if (mt != it->second.end())
+            {
+                nPledgeAmount = mt->second.first;
+                nPledgeHeight = mt->second.second;
+            }
+        }
     }
     return true;
 }

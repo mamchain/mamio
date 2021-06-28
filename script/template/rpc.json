@@ -3700,7 +3700,15 @@
             "content": {
                 "block": {
                     "type": "string",
-                    "desc": "block hash"
+                    "desc": "block hash, default is last block",
+                    "required": false,
+                    "opt": "b"
+                },
+                "height": {
+                    "type": "int",
+                    "desc": "height",
+                    "required": false,
+                    "opt": "h"
                 }
             }
         },
@@ -3708,6 +3716,14 @@
             "type": "object",
             "name": "status",
             "content": {
+                "height": {
+                    "type": "int",
+                    "desc": "height"
+                },
+                "block": {
+                    "type": "string",
+                    "desc": "block hash"
+                },
                 "minpowpledge": {
                     "type": "double",
                     "desc": "min pow pledge"
@@ -3736,12 +3752,73 @@
         },
         "example": [
             {
-                "request": "minemon-cli getpledgestatus 000000212a8a919825519a33e99a8d5deb653d3c99ff76cc35d2ebef8edf255b",
-                "response": "{\"minpowpledge\":100.000000,\"maxpowpledge\":10000.000000,\"minstakepledge\":100.000000,\"totalreward\":3300.000000,\"moneysupply\":1303.650000,\"surplusreward\":1996.350000}"
+                "request": "minemon-cli getpledgestatus -b=0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad",
+                "response": "{\"height\":12,\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\",\"minpowpledge\":100.000000,\"maxpowpledge\":10000.000000,\"minstakepledge\":100.000000,\"totalreward\":3300.000000,\"moneysupply\":1303.650000,\"surplusreward\":1996.350000}"
             },
             {
-                "request": "curl -d '{\"id\":3,\"method\":\"getpledgestatus\",\"jsonrpc\":\"2.0\",\"params\":{\"block\":\"000000212a8a919825519a33e99a8d5deb653d3c99ff76cc35d2ebef8edf255b\"}}' http://127.0.0.1:7702",
-                "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":{\"minpowpledge\":100.000000,\"maxpowpledge\":10000.000000,\"minstakepledge\":100.000000,\"totalreward\":3300.000000,\"moneysupply\":1303.650000,\"surplusreward\":1996.350000}}"
+                "request": "curl -d '{\"id\":3,\"method\":\"getpledgestatus\",\"jsonrpc\":\"2.0\",\"params\":{\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\"}}' http://127.0.0.1:7702",
+                "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":{\"height\":12,\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\",\"minpowpledge\":100.000000,\"maxpowpledge\":10000.000000,\"minstakepledge\":100.000000,\"totalreward\":3300.000000,\"moneysupply\":1303.650000,\"surplusreward\":1996.350000}}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Unknown block.\"}"
+        ]
+    },
+    "getaddresspledge": {
+        "type": "command",
+        "name": "GetAddressPledge",
+        "desc": "Get address pledge.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "pledge address"
+                },
+                "block": {
+                    "type": "string",
+                    "desc": "block hash, default is last block",
+                    "required": false,
+                    "opt": "b"
+                },
+                "height": {
+                    "type": "int",
+                    "desc": "height",
+                    "required": false,
+                    "opt": "h"
+                }
+            }
+        },
+        "response": {
+            "type": "object",
+            "name": "pledgedata",
+            "content": {
+                "height": {
+                    "type": "int",
+                    "desc": "height"
+                },
+                "block": {
+                    "type": "string",
+                    "desc": "block hash"
+                },
+                "pledgeamount": {
+                    "type": "double",
+                    "desc": "pledge amount"
+                },
+                "pledgeheight": {
+                    "type": "int",
+                    "desc": "pledge height"
+                }
+            }
+        },
+        "example": [
+            {
+                "request": "minemon-cli getaddresspledge -b=0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad",
+                "response": "{\"height\":12,\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\",\"minpowpledge\":100.000000,\"maxpowpledge\":10000.000000,\"minstakepledge\":100.000000,\"totalreward\":3300.000000,\"moneysupply\":1303.650000,\"surplusreward\":1996.350000}"
+            },
+            {
+                "request": "curl -d '{\"id\":3,\"method\":\"getaddresspledge\",\"jsonrpc\":\"2.0\",\"params\":{\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\"}}' http://127.0.0.1:7702",
+                "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":{\"height\":12,\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\",\"minpowpledge\":100.000000,\"maxpowpledge\":10000.000000,\"minstakepledge\":100.000000,\"totalreward\":3300.000000,\"moneysupply\":1303.650000,\"surplusreward\":1996.350000}}"
             }
         ],
         "error": [

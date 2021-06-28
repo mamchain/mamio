@@ -22,7 +22,7 @@ public:
     virtual Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) override;
 
     virtual Errno VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nForkHeight, const uint256& fork) override;
-    virtual Errno VerifyTransaction(const CTransaction& tx, const std::vector<CTxOut>& vPrevOutput, int nForkHeight, const uint256& fork) override;
+    virtual Errno VerifyTransaction(const CTransaction& tx, const std::vector<CTxOut>& vPrevOutput, int nForkHeight, const uint256& hashLastBlock, const uint256& fork) override;
 
     virtual Errno VerifyProofOfWork(const CBlock& block, const CBlockIndex* pIndexPrev) override;
     virtual bool GetBlockTrust(const CBlock& block, uint256& nChainTrust) override;
@@ -39,7 +39,7 @@ protected:
     Errno Debug(const Errno& err, const char* pszFunc, const char* pszFormat, ...);
     Errno VerifyDexOrderTx(const CTransaction& tx, const CDestination& destIn, int64 nValueIn, int nHeight);
     Errno VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, int nHeight);
-    Errno VerifyMintPledgeTx(const CTransaction& tx);
+    Errno VerifyMintPledgeTx(const uint256& hashPrev, const CTransaction& tx, const CDestination& destIn, const bool fBlockTx);
 
 protected:
     uint256 hashGenesisBlock;

@@ -271,7 +271,9 @@ CRPCMod::CRPCMod()
         /* tool */
         ("querystat", &CRPCMod::RPCQueryStat)
         //
-        ("getpledgestatus", &CRPCMod::RPCGetPledgeStatus);
+        ("getpledgestatus", &CRPCMod::RPCGetPledgeStatus)
+        //
+        ("getaddresspledge", &CRPCMod::RPCGetAddressPledge);
     mapRPCFunc = temp_map;
     fWriteRPCLog = true;
 }
@@ -2869,13 +2871,17 @@ CRPCResultPtr CRPCMod::RPCQueryStat(rpc::CRPCParamPtr param)
 CRPCResultPtr CRPCMod::RPCGetPledgeStatus(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetPledgeStatusParam>(param);
-    if (spParam->strBlock.empty())
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid block: is empty");
-    }
 
     uint256 hashBlock;
-    hashBlock.SetHex(spParam->strBlock);
+    if (spParam->strBlock.IsValid())
+    {
+        hashBlock.SetHex(spParam->strBlock);
+    }
+    int nHeight = 0;
+    if (spParam->nHeight.IsValid())
+    {
+        nHeight = spParam->nHeight;
+    }
 
     int64 nMinPowPledge = 0;
     int64 nMaxPowPledge = 0;
@@ -2884,12 +2890,14 @@ CRPCResultPtr CRPCMod::RPCGetPledgeStatus(rpc::CRPCParamPtr param)
     int64 nMoneySupply = 0;
     int64 nSurplusReward = 0;
 
-    if (!pService->GetPledgeStatus(hashBlock, nMinPowPledge, nMaxPowPledge, nMinStakePledge, nTotalReward, nMoneySupply, nSurplusReward))
+    if (!pService->GetPledgeStatus(hashBlock, nHeight, nMinPowPledge, nMaxPowPledge, nMinStakePledge, nTotalReward, nMoneySupply, nSurplusReward))
     {
         throw CRPCException(RPC_INTERNAL_ERROR, "Get fail");
     }
 
     auto spResult = MakeCGetPledgeStatusResultPtr();
+    spResult->nHeight = CBlock::GetBlockHeightByHash(hashBlock);
+    spResult->strBlock = hashBlock.GetHex().c_str();
     spResult->dMinpowpledge = ValueFromCoin(nMinPowPledge);
     spResult->dMaxpowpledge = ValueFromCoin(nMaxPowPledge);
     spResult->dMinstakepledge = ValueFromCoin(nMinStakePledge);
@@ -2897,6 +2905,42 @@ CRPCResultPtr CRPCMod::RPCGetPledgeStatus(rpc::CRPCParamPtr param)
     spResult->dMoneysupply = ValueFromCoin(nMoneySupply);
     spResult->dSurplusreward = ValueFromCoin(nSurplusReward);
 
+    return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCGetAddressPledge(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CGetAddressPledgeParam>(param);
+
+    CAddress addressPledge(spParam->strAddress);
+    if (addressPledge.IsNull())
+    {
+        throw CRPCException(RPC_INTERNAL_ERROR, "address error");
+    }
+
+    uint256 hashBlock;
+    if (spParam->strBlock.IsValid())
+    {
+        hashBlock.SetHex(spParam->strBlock);
+    }
+    int nHeight = 0;
+    if (spParam->nHeight.IsValid())
+    {
+        nHeight = spParam->nHeight;
+    }
+
+    int64 nPledgeAmount = 0;
+    int nPledgeHeight = 0;
+    if (!pService->GetAddressPledge(hashBlock, nHeight, addressPledge, nPledgeAmount, nPledgeHeight))
+    {
+        throw CRPCException(RPC_INTERNAL_ERROR, "Get fail");
+    }
+
+    auto spResult = MakeCGetAddressPledgeResultPtr();
+    spResult->nHeight = CBlock::GetBlockHeightByHash(hashBlock);
+    spResult->strBlock = hashBlock.GetHex().c_str();
+    spResult->dPledgeamount = ValueFromCoin(nPledgeAmount);
+    spResult->nPledgeheight = nPledgeHeight;
     return spResult;
 }
 

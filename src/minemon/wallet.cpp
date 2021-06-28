@@ -997,6 +997,10 @@ bool CWallet::GetSendToDestRecorded(const CTransaction& tx, const vector<uint8>&
             vchDestData = tempPtr->GetTemplateData();
             return true;
         }
+        if (pBlockChain->GetDbTemplateData(tx.sendTo, vchDestData))
+        {
+            return true;
+        }
         return false;
     }
     return true;

@@ -1455,38 +1455,36 @@ bool CBlockBase::GetBlockRedeemContext(const uint256& hashBlock, CRedeemContext&
     return dbBlock.RetrieveRedeemData(hashBlock, redeemData);
 }
 
+bool CBlockBase::RetrieveAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight)
+{
+    return dbBlock.RetrieveAddressPledgeData(hashBlock, destPowMint, destPledge, nPledgeAmount, nPledgeHeight);
+}
+
 bool CBlockBase::GetMintPledgeData(const uint256& hashBlock, const CDestination& destMintPow, const int64 nMinPledge, const int64 nMaxPledge,
                                    map<CDestination, int64>& mapValidPledge, int64& nTotalPledge)
 {
     mapValidPledge.clear();
     nTotalPledge = 0;
 
-    CPledgeContext ctxtPledge;
-    if (!dbBlock.RetrievePledge(hashBlock, ctxtPledge))
+    std::map<CDestination, std::pair<int64, int>> mapPowPledgeList;
+    if (!dbBlock.RetrievePowPledgeList(hashBlock, destMintPow, mapPowPledgeList))
     {
-        StdError("CBlockBase", "Get Mint Pledge Data: RetrievePledge fail, block: %s", hashBlock.GetHex().c_str());
+        StdError("CBlockBase", "Get Mint Pledge Data: Retrieve pow pledge list fail, block: %s", hashBlock.GetHex().c_str());
         return false;
     }
-    auto it = ctxtPledge.mapPledge.find(destMintPow);
-    if (it == ctxtPledge.mapPledge.end())
+    for (const auto& kv : mapPowPledgeList)
     {
-        //StdDebug("CBlockBase", "Get Mint Pledge Data: destMintPow find fail, block: %s, destMintPow: %s, pledge size: %ld",
-        //         hashBlock.GetHex().c_str(), CAddress(destMintPow).ToString().c_str(), ctxtPledge.mapPledge.size());
-    }
-    else
-    {
-        for (const auto& kv : it->second)
+        StdLog("CCH", "Get Mint Pledge Data: amount: %f, pledge address: %s",
+               ValueFromCoin(kv.second.first), CAddress(kv.first).ToString().c_str());
+        if (kv.second.first >= nMinPledge)
         {
-            if (kv.second >= nMinPledge)
+            int64& pledge = mapValidPledge[kv.first];
+            pledge = kv.second.first;
+            if (pledge > nMaxPledge)
             {
-                int64& pledge = mapValidPledge[kv.first];
-                pledge = kv.second;
-                if (pledge > nMaxPledge)
-                {
-                    pledge = nMaxPledge;
-                }
-                nTotalPledge += pledge;
+                pledge = nMaxPledge;
             }
+            nTotalPledge += pledge;
         }
     }
     return true;
@@ -1830,7 +1828,7 @@ bool CBlockBase::UpdateTxTemplateData(const uint256& hashBlock, const CBlockEx& 
 
 bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
 {
-    map<CDestination, pair<CDestination, int64>> mapBlockPledge; // pledge address, pow address
+    std::map<CDestination, std::map<CDestination, std::pair<int64, int>>> mapBlockPledge; // pow address, pledge address
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
@@ -1863,9 +1861,12 @@ bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
                 }
             }
             auto pledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptr);
-            auto& md = mapBlockPledge[tx.sendTo];
-            md.first = pledge->destPowMint;
-            md.second += tx.nAmount;
+            auto& md = mapBlockPledge[pledge->destPowMint][tx.sendTo];
+            md.first += tx.nAmount;
+            if (tx.nType != CTransaction::TX_STAKE && !txcontxt.destIn.IsNull())
+            {
+                md.second = block.GetBlockHeight();
+            }
         }
         if (txcontxt.destIn.IsTemplate() && txcontxt.destIn.GetTemplateId().GetType() == TEMPLATE_MINTPLEDGE)
         {
@@ -1910,9 +1911,8 @@ bool CBlockBase::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
                 }
             }
             auto pledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptr);
-            auto& md = mapBlockPledge[txcontxt.destIn];
-            md.first = pledge->destPowMint;
-            md.second -= (tx.nAmount + tx.nTxFee);
+            auto& md = mapBlockPledge[pledge->destPowMint][txcontxt.destIn];
+            md.first -= (tx.nAmount + tx.nTxFee);
         }
     }
     if (!dbBlock.AddBlockPledge(hashBlock, block.hashPrev, mapBlockPledge))

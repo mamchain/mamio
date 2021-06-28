@@ -135,6 +135,7 @@ private:
     /* tool */
     rpc::CRPCResultPtr RPCQueryStat(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetPledgeStatus(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetAddressPledge(rpc::CRPCParamPtr param);
 
 protected:
     xengine::IIOProc* pHttpServer;

@@ -537,7 +537,7 @@ Errno CTxPool::Push(const CTransaction& tx, uint256& hashFork, CDestination& des
     }
 
     CTxPoolView& txView = mapPoolView[hashFork];
-    Errno err = AddNew(txView, txid, tx, hashFork, nHeight);
+    Errno err = AddNew(txView, txid, tx, hashFork, nHeight, hashLast);
     if (err == OK)
     {
         CPooledTx* pPooledTx = txView.Get(txid);
@@ -855,7 +855,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
 
                     txView.GetSpent(CTxOutPoint(txid, 0), spent0);
                     txView.GetSpent(CTxOutPoint(txid, 1), spent1);
-                    if (AddNew(txView, txid, tx, update.hashFork, update.nLastBlockHeight) == OK)
+                    if (AddNew(txView, txid, tx, update.hashFork, update.nLastBlockHeight, update.hashLastBlock) == OK)
                     {
                         if (spent0 != 0)
                             txView.SetSpent(CTxOutPoint(txid, 0), spent0);
@@ -914,6 +914,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
     return true;
 }
 
+// no lock
 int64 CTxPool::GetDestAmount(const CDestination& dest)
 {
     int64 nAmount = 0;
@@ -930,6 +931,20 @@ int64 CTxPool::GetDestAmount(const CDestination& dest)
         }
     }
     return nAmount;
+}
+
+// no lock
+bool CTxPool::VerifyPledgeTx(const CDestination& dest)
+{
+    for (const auto& kv : mapTx)
+    {
+        const CPooledTx& tx = kv.second;
+        if (tx.sendTo == dest)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 int64 CTxPool::GetDestAmountLock(const CDestination& dest)
@@ -1010,7 +1025,7 @@ bool CTxPool::SaveData()
     return datTxPool.Save(vTx);
 }
 
-Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransaction& tx, const uint256& hashFork, int nForkHeight)
+Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransaction& tx, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock)
 {
     vector<CTxOut> vPrevOutput;
     vPrevOutput.resize(tx.vInput.size());
@@ -1044,7 +1059,7 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
         nValueIn += vPrevOutput[i].nAmount;
     }
 
-    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork);
+    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashLastBlock, hashFork);
     if (err != OK)
     {
         StdTrace("CTxPool", "AddNew: VerifyTransaction fail, txid: %s", txid.GetHex().c_str());
