@@ -3813,12 +3813,12 @@
         },
         "example": [
             {
-                "request": "minemon-cli getaddresspledge -b=0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad",
-                "response": "{\"height\":12,\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\",\"minpowpledge\":100.000000,\"maxpowpledge\":10000.000000,\"minstakepledge\":100.000000,\"totalreward\":3300.000000,\"moneysupply\":1303.650000,\"surplusreward\":1996.350000}"
+                "request": "minemon-cli getaddresspledge 21c045f7yb171drt6g9qavzhb18v0mkzr8pa814apdm23fpfj657p684k -b=0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad",
+                "response": "{\"height\":12,\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\",\"pledgeamount\":15.000000,\"pledgeheight\":8}"
             },
             {
-                "request": "curl -d '{\"id\":3,\"method\":\"getaddresspledge\",\"jsonrpc\":\"2.0\",\"params\":{\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\"}}' http://127.0.0.1:7702",
-                "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":{\"height\":12,\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\",\"minpowpledge\":100.000000,\"maxpowpledge\":10000.000000,\"minstakepledge\":100.000000,\"totalreward\":3300.000000,\"moneysupply\":1303.650000,\"surplusreward\":1996.350000}}"
+                "request": "curl -d '{\"id\":3,\"method\":\"getaddresspledge\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"21c045f7yb171drt6g9qavzhb18v0mkzr8pa814apdm23fpfj657p684k\",\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\"}}' http://127.0.0.1:7702",
+                "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":{\"height\":12,\"block\":\"0000000c9cfe08cbfd6024d22373a132533cbc31b671ec0ed4c8e7c894b8ddad\",\"pledgeamount\":15.000000,\"pledgeheight\":8}}"
             }
         ],
         "error": [
