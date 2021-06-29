@@ -55,6 +55,7 @@ public:
     int64 GetRedeemLockAmount(const CDestination& destRedeem, int64& nLastBlockBalance) override;
     bool VerifyBlockMintRedeem(const CBlockEx& block) override;
     bool VerifyTxMintRedeem(const CTransaction& tx, const CDestination& destIn) override;
+    bool VerifyTxPledgeTrans(const uint256& hashPrev, const CTransaction& tx, const CDestination& destIn, const bool fBlockTx) override;
     int64 GetMintPledgeReward(const uint256& hashPrevBlock, const CDestination& destMintPow) override;
     bool VerifyRepeatMint(const CBlock& block) override;
     bool GetPledgeTemplateParam(const CDestination& destMintPledge, CDestination& destOwner, CDestination& destPowMint, int& nRewardMode, std::vector<uint8>& vTemplateData) override;
@@ -62,6 +63,7 @@ public:
     bool CalcDistributePledgeReward(const uint256& hashBlock, std::map<CDestination, int64>& mapPledgeReward) override;
     bool GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, const uint32 nPrevBlockTime, std::vector<CTransaction>& vPledgeRewardTxList) override;
     bool GetDbTemplateData(const CDestination& dest, std::vector<uint8>& vTemplateData) override;
+    bool GetAddressPledgeAmount(const uint256& hashBlock, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight) override;
 
     /////////////    CheckPoints    /////////////////////
     bool HasCheckPoints() const override;

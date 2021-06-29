@@ -397,8 +397,9 @@ public:
                         std::vector<CTransaction>& vtx, int64& nTotalTxFee) override;
     bool FetchInputs(const uint256& hashFork, const CTransaction& tx, std::vector<CTxOut>& vUnspent) override;
     bool SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChange& change) override;
-    int64 GetDestAmount(const CDestination& dest);
-    int64 GetDestAmountLock(const CDestination& dest);
+    int64 GetDestAmount(const CDestination& dest) override;
+    bool VerifyPledgeTx(const CDestination& dest) override;
+    int64 GetDestAmountLock(const CDestination& dest) override;
 
 protected:
     bool HandleInitialize() override;
@@ -407,7 +408,7 @@ protected:
     void HandleHalt() override;
     bool LoadData();
     bool SaveData();
-    Errno AddNew(CTxPoolView& txView, const uint256& txid, const CTransaction& tx, const uint256& hashFork, int nForkHeight);
+    Errno AddNew(CTxPoolView& txView, const uint256& txid, const CTransaction& tx, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock);
     void RemoveTx(const uint256& txid);
     uint64 GetSequenceNumber()
     {

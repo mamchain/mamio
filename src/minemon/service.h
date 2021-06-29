@@ -84,7 +84,8 @@ public:
                  const CTemplateMintPtr& templMint) override;
     Errno SubmitWork(const std::vector<unsigned char>& vchWorkData, const CTemplateMintPtr& templMint, uint256& hashBlock) override;
     /*Tool*/
-    bool GetPledgeStatus(const uint256& hashBlock, int64& nMinPowPledge, int64& nMaxPowPledge, int64& nMinStakePledge, int64& nTotalReward, int64& nMoneySupply, int64& SurplusReward) override;
+    bool GetPledgeStatus(uint256& hashBlock, const int nHeight, int64& nMinPowPledge, int64& nMaxPowPledge, int64& nMinStakePledge, int64& nTotalReward, int64& nMoneySupply, int64& SurplusReward) override;
+    bool GetAddressPledge(uint256& hashBlock, const int nHeight, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight) override;
 
 protected:
     bool GetWorkTx(const CTemplateMintPtr& templMint, const uint32 nPrevBlockTime, CBlock& block);

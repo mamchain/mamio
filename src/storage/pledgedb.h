@@ -31,7 +31,6 @@ public:
     void Clear()
     {
         hashRef = 0;
-        mapBlockPledge.clear();
         mapPledge.clear();
     }
     void ClearEmpty()
@@ -40,7 +39,7 @@ public:
         {
             for (auto mt = it->second.begin(); mt != it->second.end();)
             {
-                if (mt->second == 0)
+                if (mt->second.first == 0)
                 {
                     it->second.erase(mt++);
                 }
@@ -59,16 +58,30 @@ public:
             }
         }
     }
+    void AddIncPledge(const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapIncPledgeIn)
+    {
+        for (const auto& kv : mapIncPledgeIn)
+        {
+            for (const auto& vd : kv.second)
+            {
+                auto& md = mapPledge[kv.first][vd.first];
+                md.first += vd.second.first;
+                if (vd.second.second > 0)
+                {
+                    md.second = vd.second.second;
+                }
+            }
+        }
+    }
 
 public:
     uint256 hashRef;
-    std::map<CDestination, std::pair<CDestination, int64>> mapBlockPledge; // pledge address, pow address
-    std::map<CDestination, std::map<CDestination, int64>> mapPledge;       // pow address, pledge address
+    std::map<CDestination, std::map<CDestination, std::pair<int64, int>>> mapPledge; // pow address, pledge address
 
 public:
     friend bool operator==(const CPledgeContext& a, const CPledgeContext& b)
     {
-        return (a.hashRef == b.hashRef && a.mapBlockPledge == b.mapBlockPledge && a.mapPledge == b.mapPledge);
+        return (a.hashRef == b.hashRef && a.mapPledge == b.mapPledge);
     }
     friend bool operator!=(const CPledgeContext& a, const CPledgeContext& b)
     {
@@ -80,7 +93,6 @@ protected:
     void Serialize(xengine::CStream& s, O& opt)
     {
         s.Serialize(hashRef, opt);
-        s.Serialize(mapBlockPledge, opt);
         s.Serialize(mapPledge, opt);
     }
 };
@@ -94,22 +106,27 @@ public:
     void Deinitialize();
     bool AddNew(const uint256& hashBlock, const CPledgeContext& ctxtPledge);
     bool Remove(const uint256& hashBlock);
-    bool Retrieve(const uint256& hashBlock, CPledgeContext& ctxtPledge);
-    bool AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn);
-    bool GetBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
+    bool RetrieveFullPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge);
+    bool AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn);
+    bool GetBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
     bool RetrieveBlockPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge);
+    bool RetrievePowPledgeList(const uint256& hashBlock, const CDestination& destPowMint, std::map<CDestination, std::pair<int64, int>>& mapPowPledgeList);
+    bool RetrieveAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight);
     void Clear();
 
 protected:
     bool IsFullPledge(const uint256& hashBlock);
-    bool GetFullBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
-    bool GetIncrementBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::pair<CDestination, int64>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
+    bool GetFullBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
+    bool GetIncrementBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn, CPledgeContext& ctxtPledge);
 
+    bool GetFullPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge);
     bool AddPledge(const uint256& hashBlock, const CPledgeContext& ctxtPledge);
     bool RemovePledge(const uint256& hashBlock);
+    CPledgeContext* GetCachePledgeContext(const uint256& hashBlock);
     bool GetPledge(const uint256& hashBlock, CPledgeContext& ctxtPledge);
-    bool GetPledge(const uint256& hashBlock, std::map<CDestination, std::map<CDestination, int64>>& mapPledgeOut);
-
+    bool GetPledge(const uint256& hashBlock, std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapPledgeOut);
+    bool GetPowPledgeList(const uint256& hashBlock, const CDestination& destPowMint, std::map<CDestination, std::pair<int64, int>>& mapPowPledgeList);
+    bool GetAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight);
     void AddCache(const uint256& hashBlock, const CPledgeContext& ctxtPledge);
 
 protected:

@@ -779,7 +779,7 @@ bool CBlockChain::VerifyTxMintRedeem(const CTransaction& tx, const CDestination&
     int64 nLockAmount = GetRedeemLockAmount(destIn, nLastBlockBalance);
     if (nLockAmount < 0)
     {
-        StdLog("BlockChain", "Verify tx mint redeem: GetRedeemLockAmount fail,tx: %s", tx.GetHash().GetHex().c_str());
+        StdLog("BlockChain", "Verify tx mint redeem: GetRedeemLockAmount fail, tx: %s", tx.GetHash().GetHex().c_str());
         return false;
     }
     if (nLockAmount > 0)
@@ -792,6 +792,78 @@ bool CBlockChain::VerifyTxMintRedeem(const CTransaction& tx, const CDestination&
                    ValueFromCoin((nLastBlockBalance - (tx.nAmount + tx.nTxFee)) - nLockAmount), tx.GetHash().GetHex().c_str());
             return false;
         }
+    }
+    return true;
+}
+
+bool CBlockChain::VerifyTxPledgeTrans(const uint256& hashPrev, const CTransaction& tx, const CDestination& destIn, const bool fBlockTx)
+{
+    CDestination destPowMint;
+    CDestination destOwnerDestIn;
+    CDestination destOwnerSendTo;
+
+    CTemplatePtr ptrSendTo = CTemplate::CreateTemplatePtr(TEMPLATE_MINTPLEDGE, tx.vchSig);
+    if (!ptrSendTo)
+    {
+        StdLog("BlockChain", "Verify tx pledge trans: sendTo CreateTemplatePtr fail");
+        return false;
+    }
+    auto objSendTo = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptrSendTo);
+    destOwnerSendTo = objSendTo->destOwner;
+
+    set<CDestination> setSubDest;
+    vector<uint8> vDestInData;
+    if (!ptrSendTo->GetSignDestination(tx, uint256(), 0, tx.vchSig, setSubDest, vDestInData))
+    {
+        StdLog("BlockChain", "Verify tx pledge trans: GetSignDestination fail");
+        return false;
+    }
+    CTemplatePtr ptrDestIn = CTemplate::CreateTemplatePtr(TEMPLATE_MINTPLEDGE, vDestInData);
+    if (!ptrDestIn)
+    {
+        StdLog("BlockChain", "Verify tx pledge trans: destIn CreateTemplatePtr fail");
+        return false;
+    }
+    auto objDestIn = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptrDestIn);
+    destPowMint = objDestIn->destPowMint;
+    destOwnerDestIn = objDestIn->destOwner;
+
+    if (destOwnerSendTo != destOwnerDestIn)
+    {
+        StdLog("BlockChain", "Verify tx pledge trans: owner error, sendto owner: %s, destin owner: %s, tx: %s",
+               CAddress(destOwnerSendTo).ToString().c_str(), CAddress(destOwnerDestIn).ToString().c_str(), tx.GetHash().GetHex().c_str());
+        return false;
+    }
+
+    if (!fBlockTx)
+    {
+        // verify txpool
+        if (!pTxPool->VerifyPledgeTx(destIn))
+        {
+            StdLog("BlockChain", "Verify tx pledge trans: There are pledge transactions not on the chain, pledge: %s, tx: %s",
+                   CAddress(destIn).ToString().c_str(), tx.GetHash().GetHex().c_str());
+            return false;
+        }
+    }
+
+    int64 nPledgeAmount = 0;
+    int nPledgeHeight = 0;
+    if (!cntrBlock.RetrieveAddressPledgeData(hashPrev, destPowMint, destIn, nPledgeAmount, nPledgeHeight))
+    {
+        StdLog("BlockChain", "Verify tx pledge trans: Retrieve pledge data fail, tx: %s", tx.GetHash().GetHex().c_str());
+        return false;
+    }
+
+    if (nPledgeAmount <= 0 || nPledgeHeight <= 0)
+    {
+        StdLog("BlockChain", "Verify tx pledge trans: Address no pledge, tx: %s", tx.GetHash().GetHex().c_str());
+        return false;
+    }
+    if ((CBlock::GetBlockHeightByHash(hashPrev) + 1 - nPledgeHeight) < BPX_REDEEM_DAY_HEIGHT)
+    {
+        StdLog("BlockChain", "Verify tx pledge trans: Pledge height not enough, pledge height: %d, current height: %d, pledge: %s, tx: %s",
+               nPledgeHeight, CBlock::GetBlockHeightByHash(hashPrev) + 1, CAddress(destIn).ToString().c_str(), tx.GetHash().GetHex().c_str());
+        return false;
     }
     return true;
 }
@@ -1077,7 +1149,24 @@ bool CBlockChain::GetDbTemplateData(const CDestination& dest, std::vector<uint8>
 {
     if (!cntrBlock.RetrieveTemplateData(dest, vTemplateData))
     {
-        StdLog("BlockChain", "Get mint template param: GetDbTemplateData fail, dest: %s", CAddress(dest).ToString().c_str());
+        StdLog("BlockChain", "Get mint template param: Retrieve template data fail, dest: %s", CAddress(dest).ToString().c_str());
+        return false;
+    }
+    return true;
+}
+
+bool CBlockChain::GetAddressPledgeAmount(const uint256& hashBlock, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight)
+{
+    CDestination destOwner;
+    CDestination destPowMint;
+    int nRewardMode;
+    std::vector<uint8> vTemplateData;
+    if (!GetPledgeTemplateParam(destPledge, destOwner, destPowMint, nRewardMode, vTemplateData))
+    {
+        return false;
+    }
+    if (!cntrBlock.RetrieveAddressPledgeData(hashBlock, destPowMint, destPledge, nPledgeAmount, nPledgeHeight))
+    {
         return false;
     }
     return true;

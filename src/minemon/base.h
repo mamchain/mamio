@@ -42,7 +42,7 @@ public:
     virtual Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) = 0;
     virtual Errno VerifyProofOfWork(const CBlock& block, const CBlockIndex* pIndexPrev) = 0;
     virtual Errno VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nForkHeight, const uint256& fork) = 0;
-    virtual Errno VerifyTransaction(const CTransaction& tx, const std::vector<CTxOut>& vPrevOutput, int nForkHeight, const uint256& fork) = 0;
+    virtual Errno VerifyTransaction(const CTransaction& tx, const std::vector<CTxOut>& vPrevOutput, int nForkHeight, const uint256& hashLastBlock, const uint256& fork) = 0;
     virtual bool GetBlockTrust(const CBlock& block, uint256& nChainTrust) = 0;
     virtual bool GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlgo, uint32_t& nBits) = 0;
     virtual int64 GetMintWorkReward(const int nHeight) = 0;
@@ -133,6 +133,7 @@ public:
     virtual int64 GetRedeemLockAmount(const CDestination& destRedeem, int64& nLastBlockBalance) = 0;
     virtual bool VerifyBlockMintRedeem(const CBlockEx& block) = 0;
     virtual bool VerifyTxMintRedeem(const CTransaction& tx, const CDestination& destIn) = 0;
+    virtual bool VerifyTxPledgeTrans(const uint256& hashPrev, const CTransaction& tx, const CDestination& destIn, const bool fBlockTx) = 0;
     virtual int64 GetMintPledgeReward(const uint256& hashPrevBlock, const CDestination& destMintPow) = 0;
     virtual bool VerifyRepeatMint(const CBlock& block) = 0;
     virtual bool GetPledgeTemplateParam(const CDestination& destMintPledge, CDestination& destOwner, CDestination& destPowMint, int& nRewardMode, std::vector<uint8>& vTemplateData) = 0;
@@ -140,6 +141,7 @@ public:
     virtual bool CalcDistributePledgeReward(const uint256& hashBlock, std::map<CDestination, int64>& mapPledgeReward) = 0;
     virtual bool GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, const uint32 nPrevBlockTime, std::vector<CTransaction>& vPledgeRewardTxList) = 0;
     virtual bool GetDbTemplateData(const CDestination& dest, std::vector<uint8>& vTemplateData) = 0;
+    virtual bool GetAddressPledgeAmount(const uint256& hashBlock, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight) = 0;
 
     const CBasicConfig* Config()
     {
@@ -174,6 +176,7 @@ public:
     virtual bool FetchInputs(const uint256& hashFork, const CTransaction& tx, std::vector<CTxOut>& vUnspent) = 0;
     virtual bool SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChange& change) = 0;
     virtual int64 GetDestAmount(const CDestination& dest) = 0;
+    virtual bool VerifyPledgeTx(const CDestination& dest) = 0;
     virtual int64 GetDestAmountLock(const CDestination& dest) = 0;
     const CStorageConfig* StorageConfig()
     {
@@ -347,7 +350,8 @@ public:
         = 0;
     virtual Errno SubmitWork(const std::vector<unsigned char>& vchWorkData, const CTemplateMintPtr& templMint, uint256& hashBlock)
         = 0;
-    virtual bool GetPledgeStatus(const uint256& hashBlock, int64& nMinPowPledge, int64& nMaxPowPledge, int64& nMinStakePledge, int64& nTotalReward, int64& nMoneySupply, int64& SurplusReward) = 0;
+    virtual bool GetPledgeStatus(uint256& hashBlock, const int nHeight, int64& nMinPowPledge, int64& nMaxPowPledge, int64& nMinStakePledge, int64& nTotalReward, int64& nMoneySupply, int64& SurplusReward) = 0;
+    virtual bool GetAddressPledge(uint256& hashBlock, const int nHeight, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight) = 0;
 };
 
 class IDataStat : public xengine::IIOModule

@@ -1416,7 +1416,7 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
     cacheBlockPledge.Clear();
     cacheBlockPledge.mapPledge = mapBlockPledge[block.hashPrev].mapPledge;
 
-    map<CDestination, pair<CDestination, int64>> mapBlockPledge; // pledge address, pow address
+    std::map<CDestination, std::map<CDestination, std::pair<int64, int>>> mapBlockPledge; // pow address, pledge address
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
@@ -1444,11 +1444,15 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
                 }
             }
             auto pledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptr);
-            auto& md = mapBlockPledge[tx.sendTo];
-            md.first = pledge->destPowMint;
-            md.second += tx.nAmount;
-
-            cacheBlockPledge.mapPledge[pledge->destPowMint][tx.sendTo] += tx.nAmount;
+            auto& md = mapBlockPledge[pledge->destPowMint][tx.sendTo];
+            auto& cacheMd = cacheBlockPledge.mapPledge[pledge->destPowMint][tx.sendTo];
+            md.first += tx.nAmount;
+            cacheMd.first += tx.nAmount;
+            if (tx.nType != CTransaction::TX_STAKE && !txcontxt.destIn.IsNull())
+            {
+                md.second = block.GetBlockHeight();
+                cacheMd.second = md.second;
+            }
         }
         if (txcontxt.destIn.IsTemplate() && txcontxt.destIn.GetTemplateId().GetType() == TEMPLATE_MINTPLEDGE)
         {
@@ -1493,11 +1497,10 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
                 }
             }
             auto pledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptr);
-            auto& md = mapBlockPledge[txcontxt.destIn];
-            md.first = pledge->destPowMint;
-            md.second -= (tx.nAmount + tx.nTxFee);
+            auto& md = mapBlockPledge[pledge->destPowMint][txcontxt.destIn];
+            md.first -= (tx.nAmount + tx.nTxFee);
 
-            int64& nPledgeValue = cacheBlockPledge.mapPledge[pledge->destPowMint][txcontxt.destIn];
+            int64& nPledgeValue = cacheBlockPledge.mapPledge[pledge->destPowMint][txcontxt.destIn].first;
             nPledgeValue -= (tx.nAmount + tx.nTxFee);
             if (nPledgeValue < 0)
             {
@@ -1919,10 +1922,10 @@ bool CCheckBlockWalker::GetMintPledgeData(const uint256& hashBlock, const CDesti
     {
         for (const auto& kv : it->second)
         {
-            if (kv.second >= nMinPledge)
+            if (kv.second.first >= nMinPledge)
             {
                 int64& pledge = mapValidPledge[kv.first];
-                pledge = kv.second;
+                pledge = kv.second.first;
                 if (pledge > nMaxPledge)
                 {
                     pledge = nMaxPledge;

@@ -410,7 +410,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     }
     case TEMPLATE_MINTPLEDGE:
     {
-        Errno err = VerifyMintPledgeTx(tx);
+        Errno err = VerifyMintPledgeTx(pIndexPrev->GetBlockHash(), tx, destIn, true);
         if (err != OK)
         {
             return DEBUG(err, "invalid mint pledge tx");
@@ -440,7 +440,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
 }
 
 Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxOut>& vPrevOutput,
-                                       int nForkHeight, const uint256& fork)
+                                       int nForkHeight, const uint256& hashLastBlock, const uint256& fork)
 {
     CDestination destIn = vPrevOutput[0].destTo;
     int64 nValueIn = 0;
@@ -516,7 +516,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     }
     case TEMPLATE_MINTPLEDGE:
     {
-        Errno err = VerifyMintPledgeTx(tx);
+        Errno err = VerifyMintPledgeTx(hashLastBlock, tx, destIn, false);
         if (err != OK)
         {
             return DEBUG(err, "invalid mint pledge tx");
@@ -980,45 +980,55 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
     return OK;
 }
 
-Errno CCoreProtocol::VerifyMintPledgeTx(const CTransaction& tx)
+Errno CCoreProtocol::VerifyMintPledgeTx(const uint256& hashPrev, const CTransaction& tx, const CDestination& destIn, const bool fBlockTx)
 {
-    if (!tx.sendTo.IsTemplate() || tx.sendTo.GetTemplateId().GetType() != TEMPLATE_MINTREDEEM)
+    if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_MINTPLEDGE)
+    {
+        if (!pBlockChain->VerifyTxPledgeTrans(hashPrev, tx, destIn, fBlockTx))
+        {
+            Log("Verify mit pledge tx: Verify pledge trans fail, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_INVALID;
+        }
+    }
+    else if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
+    {
+        vector<uint8> vchSig;
+        if (!CTemplate::VerifyDestRecorded(tx, vchSig))
+        {
+            Log("Verify mit pledge tx: verify dest recorded fail, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_INVALID;
+        }
+
+        // to
+        auto ptrRedeem = CTemplate::CreateTemplatePtr(TEMPLATE_MINTREDEEM, tx.vchSig);
+        if (ptrRedeem == nullptr)
+        {
+            Log("Verify mit pledge tx: Create redeem template fail, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_INVALID;
+        }
+        auto objRedeem = boost::dynamic_pointer_cast<CTemplateMintRedeem>(ptrRedeem);
+
+        // from
+        auto ptrPledge = CTemplate::CreateTemplatePtr(TEMPLATE_MINTPLEDGE, vchSig);
+        if (ptrPledge == nullptr)
+        {
+            Log("Verify mit pledge tx: Create pledge template fail, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_INVALID;
+        }
+        auto objPledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptrPledge);
+
+        if (objPledge->destOwner != objRedeem->destOwner)
+        {
+            Log("Verify mit pledge tx: owner address error, tx: %s, pledge owner: %s, redeem owner: %s",
+                tx.GetHash().GetHex().c_str(),
+                CAddress(objPledge->destOwner).ToString().c_str(),
+                CAddress(objRedeem->destOwner).ToString().c_str());
+            return ERR_TRANSACTION_INVALID;
+        }
+    }
+    else
     {
         Log("Verify mit pledge tx: sendto error, tx: %s", tx.GetHash().GetHex().c_str());
-        return ERR_TRANSACTION_INVALID;
-    }
-
-    vector<uint8> vchSig;
-    if (!CTemplate::VerifyDestRecorded(tx, vchSig))
-    {
-        Log("Verify mit pledge tx: verify dest recorded fail, tx: %s", tx.GetHash().GetHex().c_str());
-        return ERR_TRANSACTION_INVALID;
-    }
-
-    // to
-    auto ptrRedeem = CTemplate::CreateTemplatePtr(TEMPLATE_MINTREDEEM, tx.vchSig);
-    if (ptrRedeem == nullptr)
-    {
-        Log("Verify mit pledge tx: Create redeem template fail, tx: %s", tx.GetHash().GetHex().c_str());
-        return ERR_TRANSACTION_INVALID;
-    }
-    auto objRedeem = boost::dynamic_pointer_cast<CTemplateMintRedeem>(ptrRedeem);
-
-    // from
-    auto ptrPledge = CTemplate::CreateTemplatePtr(TEMPLATE_MINTPLEDGE, vchSig);
-    if (ptrPledge == nullptr)
-    {
-        Log("Verify mit pledge tx: Create pledge template fail, tx: %s", tx.GetHash().GetHex().c_str());
-        return ERR_TRANSACTION_INVALID;
-    }
-    auto objPledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptrPledge);
-
-    if (objPledge->destOwner != objRedeem->destOwner)
-    {
-        Log("Verify mit pledge tx: owner address error, tx: %s, pledge owner: %s, redeem owner: %s",
-            tx.GetHash().GetHex().c_str(),
-            CAddress(objPledge->destOwner).ToString().c_str(),
-            CAddress(objRedeem->destOwner).ToString().c_str());
         return ERR_TRANSACTION_INVALID;
     }
     return OK;

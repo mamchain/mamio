@@ -220,14 +220,19 @@ bool CBlockDB::WalkThroughUnspent(const uint256& hashFork, CForkUnspentDBWalker&
     return dbUnspent.WalkThrough(hashFork, walker);
 }
 
-bool CBlockDB::AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const map<CDestination, pair<CDestination, int64>>& mapBlockPledgeIn)
+bool CBlockDB::AddBlockPledge(const uint256& hashBlock, const uint256& hashPrev, const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapBlockPledgeIn)
 {
     return dbPledge.AddBlockPledge(hashBlock, hashPrev, mapBlockPledgeIn);
 }
 
-bool CBlockDB::RetrievePledge(const uint256& hash, CPledgeContext& ctxtPledge)
+bool CBlockDB::RetrievePowPledgeList(const uint256& hashBlock, const CDestination& destPowMint, std::map<CDestination, std::pair<int64, int>>& mapPowPledgeList)
 {
-    return dbPledge.Retrieve(hash, ctxtPledge);
+    return dbPledge.RetrievePowPledgeList(hashBlock, destPowMint, mapPowPledgeList);
+}
+
+bool CBlockDB::RetrieveAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight)
+{
+    return dbPledge.RetrieveAddressPledgeData(hashBlock, destPowMint, destPledge, nPledgeAmount, nPledgeHeight);
 }
 
 bool CBlockDB::UpdateTemplateData(const CDestination& dest, const vector<uint8>& vTemplateData)
