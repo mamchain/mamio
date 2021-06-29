@@ -386,6 +386,14 @@ public:
     bool ClearSurplusTemplateData();
     bool UpdatePledge(const uint256& hashBlock, const CBlockEx& block);
     bool UpdateRedeem(const uint256& hashBlock, const CBlockEx& block);
+    bool CheckPledgeReward(const uint256& hashBlock, const CBlockEx& block);
+
+    bool CalcBlockPledgeReward(const CDestination& destPowMint, const uint256& hashPrevBlock, map<CDestination, int64>& mapPledgeReward);
+    int64 CalcPledgeRewardValue(const uint256& hashPrevBlock, const int64 nTotalPledge, const int64 nPowMinPledge, const int64 nMaxPledge);
+    int64 GetBlockMoneySupply(const uint256& hashBlock);
+    bool GetMintPledgeData(const uint256& hashBlock, const CDestination& destMintPow, const int64 nMinPledge, const int64 nMaxPledge, map<CDestination, int64>& mapValidPledge, int64& nTotalPledge);
+    bool GetPowMintTemplateParam(const CDestination& destMint, CDestination& destSpent, uint32& nPledgeFee);
+    bool GetPledgeTemplateParam(const CDestination& destMintPledge, CDestination& destOwner, CDestination& destPowMint, int& nRewardMode, vector<uint8>& vTemplateData);
 
 public:
     bool fOnlyCheck;
@@ -398,12 +406,16 @@ public:
     map<uint256, CBlockEx> mapBlock;
     map<uint256, CBlockIndex*> mapBlockIndex;
     map<CDestination, pair<vector<uint8>, int>> mapTemplateData;
+    map<uint256, CPledgeContext> mapBlockPledge;
+    map<uint256, map<CDestination, int64>> mapBlockPledgeReward;
+    map<uint256, vector<pair<CDestination, int64>>> mapSectPledgeReward;
     CBlockIndexDB dbBlockIndex;
     CCheckBlockIndexWalker objBlockIndexWalker;
     CCheckTsBlock objTsBlock;
     CTemplateDataDB dbTemplateData;
     CPledgeDB dbPledge;
     CRedeemDB dbRedeem;
+    CCoreProtocol objCore;
 };
 
 /////////////////////////////////////////////////////////////////////////

@@ -34,6 +34,9 @@ public:
     virtual bool GetPledgeMinMaxValue(const uint256& hashPrevBlock, int64& nPowMinPledge, int64& nStakeMinPledge, int64& nMaxPledge) override;
     virtual uint32 CalcSingleBlockDistributePledgeRewardTxCount() override;
 
+public:
+    bool GetBlockPledgeMinMaxValue(const uint256& hashPrevBlock, const int64 nMoneySupply, int64& nPowMinPledge, int64& nStakeMinPledge, int64& nMaxPledge);
+
 protected:
     bool HandleInitialize() override;
     Errno Debug(const Errno& err, const char* pszFunc, const char* pszFormat, ...);

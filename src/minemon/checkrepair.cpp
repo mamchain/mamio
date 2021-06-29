@@ -5,6 +5,7 @@
 #include "checkrepair.h"
 
 #include "template/mintpledge.h"
+#include "template/proof.h"
 
 using namespace std;
 using namespace xengine;
@@ -926,6 +927,12 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
         return false;
     }
 
+    if (!CheckPledgeReward(hashBlock, block))
+    {
+        StdLog("Check", "Block walk: Check pledge reward fail, block: %s.", hashBlock.GetHex().c_str());
+        return false;
+    }
+
     if (!UpdateRedeem(hashBlock, block))
     {
         StdLog("Check", "Block walk: Update redeem fail, block: %s.", hashBlock.GetHex().c_str());
@@ -1405,6 +1412,10 @@ bool CCheckBlockWalker::ClearSurplusTemplateData()
 
 bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& block)
 {
+    CPledgeContext& cacheBlockPledge = mapBlockPledge[hashBlock];
+    cacheBlockPledge.Clear();
+    cacheBlockPledge.mapPledge = mapBlockPledge[block.hashPrev].mapPledge;
+
     std::map<CDestination, std::map<CDestination, std::pair<int64, int>>> mapBlockPledge; // pow address, pledge address
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
@@ -1434,10 +1445,13 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
             }
             auto pledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptr);
             auto& md = mapBlockPledge[pledge->destPowMint][tx.sendTo];
+            auto& cacheMd = cacheBlockPledge.mapPledge[pledge->destPowMint][tx.sendTo];
             md.first += tx.nAmount;
+            cacheMd.first += tx.nAmount;
             if (tx.nType != CTransaction::TX_STAKE && !txcontxt.destIn.IsNull())
             {
                 md.second = block.GetBlockHeight();
+                cacheMd.second = md.second;
             }
         }
         if (txcontxt.destIn.IsTemplate() && txcontxt.destIn.GetTemplateId().GetType() == TEMPLATE_MINTPLEDGE)
@@ -1485,8 +1499,19 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
             auto pledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptr);
             auto& md = mapBlockPledge[pledge->destPowMint][txcontxt.destIn];
             md.first -= (tx.nAmount + tx.nTxFee);
+
+            int64& nPledgeValue = cacheBlockPledge.mapPledge[pledge->destPowMint][txcontxt.destIn].first;
+            nPledgeValue -= (tx.nAmount + tx.nTxFee);
+            if (nPledgeValue < 0)
+            {
+                StdError("Check", "Update pledge: Pledge < 0, Value: %ld, destIn: %s, block: %s",
+                         nPledgeValue, CAddress(txcontxt.destIn).ToString().c_str(),
+                         hashBlock.GetHex().c_str());
+                return false;
+            }
         }
     }
+    cacheBlockPledge.ClearEmpty();
 
     CPledgeContext ctxtPledge;
     if (!dbPledge.GetBlockPledge(hashBlock, block.hashPrev, mapBlockPledge, ctxtPledge))
@@ -1584,6 +1609,391 @@ bool CCheckBlockWalker::UpdateRedeem(const uint256& hashBlock, const CBlockEx& b
             return false;
         }
     }
+    return true;
+}
+
+bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlockEx& block)
+{
+    const int nDistributeHeight = BPX_PLEDGE_REWARD_DISTRIBUTE_HEIGHT;
+    int nHeightDiff = CBlock::GetBlockHeightByHash(block.hashPrev) % nDistributeHeight;
+    if (CBlock::GetBlockHeightByHash(block.hashPrev) >= nDistributeHeight && nHeightDiff < 100)
+    {
+        auto it = mapBlockIndex.find(block.hashPrev);
+        if (it == mapBlockIndex.end())
+        {
+            StdError("Check", "Check pledge reward: Find block index fail, hashPrev: %s", block.hashPrev.GetHex().c_str());
+            return false;
+        }
+        CBlockIndex* pIndex = it->second;
+        while (pIndex && (pIndex->GetBlockHeight() % nDistributeHeight) > 0)
+        {
+            pIndex = pIndex->pPrev;
+        }
+        if (pIndex == nullptr)
+        {
+            StdError("Check", "Check pledge reward: Block index error, hashPrev: %s", block.hashPrev.GetHex().c_str());
+            return false;
+        }
+
+        uint256 hashSectBlock = pIndex->GetBlockHash();
+        const auto& vRewardTable = mapSectPledgeReward[hashSectBlock];
+
+        const uint32 nSingleBlockTxCount = objCore.CalcSingleBlockDistributePledgeRewardTxCount();
+        if (nSingleBlockTxCount == 0)
+        {
+            StdError("Check", "Check pledge reward: CalcSingleBlockDistributePledgeRewardTxCount fail, hashSectBlock: %s", hashSectBlock.GetHex().c_str());
+            return false;
+        }
+        uint32 nRewardBlockCount = 0;
+        if (vRewardTable.size() > 0)
+        {
+            nRewardBlockCount = vRewardTable.size() / nSingleBlockTxCount;
+            if ((vRewardTable.size() % nSingleBlockTxCount) > 0)
+            {
+                nRewardBlockCount++;
+            }
+        }
+        size_t nStakeTxCount = 0;
+        for (const auto& tx : block.vtx)
+        {
+            if (tx.nType == CTransaction::TX_STAKE)
+            {
+                nStakeTxCount++;
+            }
+        }
+        if (nHeightDiff >= nRewardBlockCount)
+        {
+            if (nStakeTxCount > 0)
+            {
+                StdLog("Check", "Check pledge reward: block stake tx error, stake tx count: %ld, height: %d, block: %s",
+                       nStakeTxCount, CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                return false;
+            }
+        }
+        else
+        {
+            size_t nBlockRewardCount = vRewardTable.size() - nSingleBlockTxCount * nHeightDiff;
+            if (nBlockRewardCount > nSingleBlockTxCount)
+            {
+                nBlockRewardCount = nSingleBlockTxCount;
+            }
+            if (nStakeTxCount != nBlockRewardCount)
+            {
+                StdLog("Check", "Check pledge reward: stake tx count != calc reward count, stake tx count: %ld, calc reward count: %ld, height: %d, block: %s",
+                       nStakeTxCount, nBlockRewardCount,
+                       CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                return false;
+            }
+            else
+            {
+                int nErrorRewardTxCount = 0;
+                int nStartIndex = nSingleBlockTxCount * nHeightDiff;
+                for (size_t i = 0; i < nBlockRewardCount; i++)
+                {
+                    const auto& calcReward = vRewardTable[nStartIndex + i];
+                    const auto& tx = block.vtx[i];
+                    if (tx.nType != CTransaction::TX_STAKE)
+                    {
+                        StdLog("Check", "Check pledge reward: tx type error, type: %d, height: %d, block: %s",
+                               tx.nType, CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                        nErrorRewardTxCount++;
+                    }
+                    else
+                    {
+                        CDestination destReward;
+                        if (calcReward.first.GetTemplateId().GetType() == TEMPLATE_MINTPLEDGE)
+                        {
+                            CDestination destOwner;
+                            CDestination destPowMint;
+                            int nRewardMode = 0;
+                            vector<uint8> vTemplateData;
+                            if (!GetPledgeTemplateParam(calcReward.first, destOwner, destPowMint, nRewardMode, vTemplateData))
+                            {
+                                StdError("Check", "Check pledge reward: Get pledge template param fail, pledge: %s", CAddress(calcReward.first).ToString().c_str());
+                                return false;
+                            }
+                            if (nRewardMode == 1)
+                            {
+                                destReward = calcReward.first;
+                            }
+                            else
+                            {
+                                destReward = destOwner;
+                            }
+                        }
+                        else
+                        {
+                            destReward = calcReward.first;
+                        }
+                        if (tx.sendTo != destReward)
+                        {
+                            StdLog("Check", "Check pledge reward: sendTo error, sendTo: %s, reward dest: %s, txid: %s, height: %d, block: %s",
+                                   CAddress(tx.sendTo).ToString().c_str(), CAddress(destReward).ToString().c_str(), tx.GetHash().GetHex().c_str(),
+                                   CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                            nErrorRewardTxCount++;
+                        }
+                        else if (tx.nAmount != calcReward.second)
+                        {
+                            StdLog("Check", "Check pledge reward: nAmount error, nAmount: %f, reward amount: %f, sendTo: %s, txid: %s, height: %d, block: %s",
+                                   ValueFromCoin(tx.nAmount), ValueFromCoin(calcReward.second), CAddress(tx.sendTo).ToString().c_str(), tx.GetHash().GetHex().c_str(),
+                                   CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                            nErrorRewardTxCount++;
+                        }
+                        /*else
+                        {
+                            StdLog("Check", "Check pledge reward: Verify success, reward amount: %f, sendTo: %s, txid: %s, height: %d, block: %s",
+                                   ValueFromCoin(calcReward.second), CAddress(tx.sendTo).ToString().c_str(), tx.GetHash().GetHex().c_str(),
+                                   CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                        }*/
+                    }
+                }
+                if (nErrorRewardTxCount > 0)
+                {
+                    StdLog("Check", "Check pledge reward: Verify reward tx fail, count: %d, height: %d, block: %s",
+                           nErrorRewardTxCount, CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());
+                    return false;
+                }
+            }
+        }
+    }
+
+    map<CDestination, int64> mapPledgeRewardValue;
+    if (!CalcBlockPledgeReward(block.txMint.sendTo, block.hashPrev, mapPledgeRewardValue))
+    {
+        StdLog("Check", "Check pledge reward: Calc block pledge reward fail, block: %s", hashBlock.GetHex().c_str());
+        return false;
+    }
+
+    auto& calcPledgeReward = mapBlockPledgeReward[hashBlock];
+    calcPledgeReward = mapBlockPledgeReward[block.hashPrev];
+
+    for (auto it = calcPledgeReward.begin(); it != calcPledgeReward.end();)
+    {
+        if (it->second == 0)
+        {
+            calcPledgeReward.erase(it++);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    for (const auto& kv : mapPledgeRewardValue)
+    {
+        calcPledgeReward[kv.first] += kv.second;
+    }
+
+    if ((CBlock::GetBlockHeightByHash(hashBlock) % nDistributeHeight) == 0)
+    {
+        auto& vRewardTable = mapSectPledgeReward[hashBlock];
+        vRewardTable.clear();
+        vRewardTable.reserve(calcPledgeReward.size());
+        for (auto& kv : calcPledgeReward)
+        {
+            vRewardTable.push_back(make_pair(kv.first, kv.second));
+            kv.second = 0;
+        }
+    }
+
+    return true;
+}
+
+bool CCheckBlockWalker::CalcBlockPledgeReward(const CDestination& destPowMint, const uint256& hashPrevBlock, map<CDestination, int64>& mapPledgeReward)
+{
+    int64 nPowMinPledge = 0;
+    int64 nStakeMinPledge = 0;
+    int64 nMaxPledge = 0;
+
+    int64 nMoneySupply = GetBlockMoneySupply(hashPrevBlock);
+    if (nMoneySupply < 0)
+    {
+        StdLog("Check", "Calculate block pledge reward: nMoneySupply < 0, prev block: %s", hashPrevBlock.GetHex().c_str());
+        return false;
+    }
+    if (!objCore.GetBlockPledgeMinMaxValue(hashPrevBlock, nMoneySupply, nPowMinPledge, nStakeMinPledge, nMaxPledge))
+    {
+        StdLog("Check", "Calculate block pledge reward: Get pledge min and max value fail, prev block: %s", hashPrevBlock.GetHex().c_str());
+        return false;
+    }
+
+    // get pledge
+    map<CDestination, int64> mapValidPledge;
+    int64 nTotalPledge = 0;
+    if (!GetMintPledgeData(hashPrevBlock, destPowMint, nStakeMinPledge, nMaxPledge, mapValidPledge, nTotalPledge))
+    {
+        StdLog("Check", "Calculate block pledge reward: Get mint pledge data fail, prev block: %s", hashPrevBlock.GetHex().c_str());
+        return false;
+    }
+
+    // calculate reward
+    int64 nBlockPledgeReward = CalcPledgeRewardValue(hashPrevBlock, nTotalPledge, nPowMinPledge, nMaxPledge);
+    if (nBlockPledgeReward < 0)
+    {
+        StdLog("Check", "Calculate block pledge reward: Calculate pledge reward value fail, prev block: %s", hashPrevBlock.GetHex().c_str());
+        return false;
+    }
+    if (nBlockPledgeReward == 0 || mapValidPledge.empty())
+    {
+        // no pledge reward
+        return true;
+    }
+
+    CDestination destSpent;
+    uint32 nPledgeFee = 0;
+    if (!GetPowMintTemplateParam(destPowMint, destSpent, nPledgeFee))
+    {
+        StdLog("Check", "Calculate block pledge reward: Get mint param fail, destMint: %s, prev block: %s", CAddress(destPowMint).ToString().c_str(), hashPrevBlock.GetHex().c_str());
+        return false;
+    }
+
+    // distribute reward
+    int64 nDistributeTotalReward = 0;
+    for (const auto& kv : mapValidPledge)
+    {
+        int64 nDestReward = (int64)((__uint128_t)nBlockPledgeReward * kv.second / nTotalPledge);
+        if (nPledgeFee > 0 && nPledgeFee <= 1000)
+        {
+            nDestReward -= (int64)((__uint128_t)nDestReward * nPledgeFee / 1000);
+        }
+        mapPledgeReward[kv.first] += nDestReward;
+        nDistributeTotalReward += nDestReward;
+    }
+    if (nBlockPledgeReward - nDistributeTotalReward > 0)
+    {
+        mapPledgeReward[destPowMint] += (nBlockPledgeReward - nDistributeTotalReward);
+    }
+    return true;
+}
+
+int64 CCheckBlockWalker::CalcPledgeRewardValue(const uint256& hashPrevBlock, const int64 nTotalPledge, const int64 nPowMinPledge, const int64 nMaxPledge)
+{
+    int64 nCalcTotalPledge = nTotalPledge;
+    if (nCalcTotalPledge < nPowMinPledge)
+    {
+        // no pledge reward
+        return 0;
+    }
+    if (nCalcTotalPledge > nMaxPledge)
+    {
+        nCalcTotalPledge = nMaxPledge;
+    }
+
+    int nPrevHeight = CBlock::GetBlockHeightByHash(hashPrevBlock);
+    int64 nMoneySupply = GetBlockMoneySupply(hashPrevBlock);
+    int64 nTotalReward = objCore.GetMintTotalReward(nPrevHeight);
+    int64 nSurplusReward = nTotalReward - nMoneySupply;
+    if (nSurplusReward < 0)
+    {
+        StdLog("Check", "Calculate pledge reward value: Surplus reward error, nTotalReward: %ld, nMoneySupply: %ld, prev block: %s",
+               nTotalReward, nMoneySupply, hashPrevBlock.GetHex().c_str());
+        return -1;
+    }
+    nSurplusReward += objCore.GetBlockPledgeReward(nPrevHeight + 1);
+
+    // R'=[T*(100%-38.2%)+S]*(D/M)
+    int64 nReward = (int64)(((__uint128_t)nSurplusReward * nCalcTotalPledge) / nMaxPledge);
+    return nReward;
+}
+
+int64 CCheckBlockWalker::GetBlockMoneySupply(const uint256& hashBlock)
+{
+    if (hashBlock == 0)
+    {
+        return 0;
+    }
+    auto it = mapBlockIndex.find(hashBlock);
+    if (it == mapBlockIndex.end())
+    {
+        StdLog("Check", "Get block money supply: Find fail, block: %s", hashBlock.GetHex().c_str());
+        return -1;
+    }
+    return it->second->GetMoneySupply();
+}
+
+bool CCheckBlockWalker::GetMintPledgeData(const uint256& hashBlock, const CDestination& destMintPow, const int64 nMinPledge, const int64 nMaxPledge, map<CDestination, int64>& mapValidPledge, int64& nTotalPledge)
+{
+    mapValidPledge.clear();
+    nTotalPledge = 0;
+
+    const CPledgeContext& cacheBlockPledge = mapBlockPledge[hashBlock];
+    auto it = cacheBlockPledge.mapPledge.find(destMintPow);
+    if (it != cacheBlockPledge.mapPledge.end())
+    {
+        for (const auto& kv : it->second)
+        {
+            if (kv.second.first >= nMinPledge)
+            {
+                int64& pledge = mapValidPledge[kv.first];
+                pledge = kv.second.first;
+                if (pledge > nMaxPledge)
+                {
+                    pledge = nMaxPledge;
+                }
+                nTotalPledge += pledge;
+            }
+        }
+    }
+    return true;
+}
+
+bool CCheckBlockWalker::GetPowMintTemplateParam(const CDestination& destMint, CDestination& destSpent, uint32& nPledgeFee)
+{
+    if (!destMint.IsTemplate() || destMint.GetTemplateId().GetType() != TEMPLATE_PROOF)
+    {
+        StdLog("Check", "Get mint template param: destMint error, destMint: %s", CAddress(destMint).ToString().c_str());
+        return false;
+    }
+
+    auto it = mapTemplateData.find(destMint);
+    if (it == mapTemplateData.end())
+    {
+        StdLog("Check", "Get mint template param: Find template data fail, destMint: %s", CAddress(destMint).ToString().c_str());
+        return false;
+    }
+    const vector<uint8>& vTemplateData = it->second.first;
+
+    auto ptrMint = CTemplate::CreateTemplatePtr(destMint.GetTemplateId().GetType(), vTemplateData);
+    if (ptrMint == nullptr)
+    {
+        StdLog("Check", "Get mint template param: CreateTemplatePtr fail, destMint: %s", CAddress(destMint).ToString().c_str());
+        return false;
+    }
+    auto objMint = boost::dynamic_pointer_cast<CTemplateProof>(ptrMint);
+
+    destSpent = objMint->destSpent;
+    nPledgeFee = objMint->nPledgeFee;
+    return true;
+}
+
+bool CCheckBlockWalker::GetPledgeTemplateParam(const CDestination& destMintPledge, CDestination& destOwner, CDestination& destPowMint, int& nRewardMode, vector<uint8>& vTemplateData)
+{
+    if (!destMintPledge.IsTemplate() || destMintPledge.GetTemplateId().GetType() != TEMPLATE_MINTPLEDGE)
+    {
+        StdLog("Check", "Get pledge template param: destMintPledge error, destMintPledge: %s", CAddress(destMintPledge).ToString().c_str());
+        return false;
+    }
+
+    auto it = mapTemplateData.find(destMintPledge);
+    if (it == mapTemplateData.end())
+    {
+        StdLog("Check", "Get pledge template param: Find template data fail, destMintPledge: %s", CAddress(destMintPledge).ToString().c_str());
+        return false;
+    }
+    vTemplateData = it->second.first;
+
+    auto ptrPledge = CTemplate::CreateTemplatePtr(destMintPledge.GetTemplateId().GetType(), vTemplateData);
+    if (ptrPledge == nullptr)
+    {
+        StdLog("Check", "Get pledge template param: CreateTemplatePtr fail, destMintPledge: %s", CAddress(destMintPledge).ToString().c_str());
+        return false;
+    }
+    auto objPledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptrPledge);
+
+    destOwner = objPledge->destOwner;
+    destPowMint = objPledge->destPowMint;
+    nRewardMode = objPledge->nRewardMode;
+
     return true;
 }
 

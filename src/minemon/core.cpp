@@ -693,19 +693,23 @@ int64 CCoreProtocol::GetMintTotalReward(const int nHeight)
 
 bool CCoreProtocol::GetPledgeMinMaxValue(const uint256& hashPrevBlock, int64& nPowMinPledge, int64& nStakeMinPledge, int64& nMaxPledge)
 {
+    int64 nMoneySupply = pBlockChain->GetBlockMoneySupply(hashPrevBlock);
+    if (nMoneySupply < 0)
+    {
+        StdError("CCoreProtocol", "GetPledgeMinMaxValue: GetBlockMoneySupply fail, prev block: %s", hashPrevBlock.GetHex().c_str());
+        return false;
+    }
+    return GetBlockPledgeMinMaxValue(hashPrevBlock, nMoneySupply, nPowMinPledge, nStakeMinPledge, nMaxPledge);
+}
+
+bool CCoreProtocol::GetBlockPledgeMinMaxValue(const uint256& hashPrevBlock, const int64 nMoneySupply, int64& nPowMinPledge, int64& nStakeMinPledge, int64& nMaxPledge)
+{
     if (hashPrevBlock == hashGenesisBlock)
     {
         nPowMinPledge = BPX_MIN_PLEDGE_COIN;
         nMaxPledge = nPowMinPledge * 100;
         nStakeMinPledge = BPX_INIT_BLOCK_REWARD_TOKEN;
         return true;
-    }
-
-    int64 nMoneySupply = pBlockChain->GetBlockMoneySupply(hashPrevBlock);
-    if (nMoneySupply < 0)
-    {
-        StdError("CCoreProtocol", "GetPledgeMinMaxValue: GetBlockMoneySupply fail, prev block: %s", hashPrevBlock.GetHex().c_str());
-        return false;
     }
 
     nPowMinPledge = nMoneySupply / 10000;

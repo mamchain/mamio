@@ -1004,9 +1004,10 @@ bool CBlockChain::CalcDistributePledgeReward(const uint256& hashBlock, std::map<
 bool CBlockChain::GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, const uint32 nPrevBlockTime, std::vector<CTransaction>& vPledgeRewardTxList)
 {
     const int nDistributeHeight = BPX_PLEDGE_REWARD_DISTRIBUTE_HEIGHT;
-    if ((CBlock::GetBlockHeightByHash(hashPrevBlock) % nDistributeHeight) > 100)
+    if (CBlock::GetBlockHeightByHash(hashPrevBlock) < nDistributeHeight
+        || (CBlock::GetBlockHeightByHash(hashPrevBlock) % nDistributeHeight) > 100)
     {
-        StdDebug("BlockChain", "Get distribute pledge reward tx: not distribute, hashPrevBlock: %s", hashPrevBlock.GetHex().c_str());
+        //StdDebug("BlockChain", "Get distribute pledge reward tx: not distribute, hashPrevBlock: %s", hashPrevBlock.GetHex().c_str());
         return true;
     }
     CBlockIndex* pIndex = nullptr;
