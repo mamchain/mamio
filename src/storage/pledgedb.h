@@ -39,7 +39,7 @@ public:
         {
             for (auto mt = it->second.begin(); mt != it->second.end();)
             {
-                if (mt->second.first <= 0)
+                if (mt->second.first == 0)
                 {
                     it->second.erase(mt++);
                 }
@@ -55,6 +55,21 @@ public:
             else
             {
                 ++it;
+            }
+        }
+    }
+    void AddIncPledge(const std::map<CDestination, std::map<CDestination, std::pair<int64, int>>>& mapIncPledgeIn)
+    {
+        for (const auto& kv : mapIncPledgeIn)
+        {
+            for (const auto& vd : kv.second)
+            {
+                auto& md = mapPledge[kv.first][vd.first];
+                md.first += vd.second.first;
+                if (vd.second.second > 0)
+                {
+                    md.second = vd.second.second;
+                }
             }
         }
     }

@@ -150,18 +150,7 @@ bool CPledgeDB::GetFullBlockPledge(const uint256& hashBlock, const uint256& hash
         StdError("CPledgeDB", "Get full: Get pledge fail");
         return false;
     }
-    for (const auto& kv : mapBlockPledgeIn)
-    {
-        for (const auto& vd : kv.second)
-        {
-            auto& md = ctxtPledge.mapPledge[kv.first][vd.first];
-            md.first += vd.second.first;
-            if (vd.second.second > 0)
-            {
-                md.second = vd.second.second;
-            }
-        }
-    }
+    ctxtPledge.AddIncPledge(mapBlockPledgeIn);
     ctxtPledge.ClearEmpty();
     return true;
 }
@@ -178,18 +167,7 @@ bool CPledgeDB::GetIncrementBlockPledge(const uint256& hashBlock, const uint256&
         ctxtPledge.hashRef = hashPrev;
         ctxtPledge.mapPledge.clear();
     }
-    for (const auto& kv : mapBlockPledgeIn)
-    {
-        for (const auto& vd : kv.second)
-        {
-            auto& md = ctxtPledge.mapPledge[kv.first][vd.first];
-            md.first += vd.second.first;
-            if (vd.second.second > 0)
-            {
-                md.second = vd.second.second;
-            }
-        }
-    }
+    ctxtPledge.AddIncPledge(mapBlockPledgeIn);
     return true;
 }
 
@@ -210,18 +188,7 @@ bool CPledgeDB::GetFullPledge(const uint256& hashBlock, CPledgeContext& ctxtPled
             StdError("CPledgeDB", "Get full pledge: Get pledge fail, ref: %s", ctxtPledge.hashRef.GetHex().c_str());
             return false;
         }
-        for (const auto& kv : mapIncPledge)
-        {
-            for (const auto& vd : kv.second)
-            {
-                auto& md = ctxtPledge.mapPledge[kv.first][vd.first];
-                md.first += vd.second.first;
-                if (vd.second.second > 0)
-                {
-                    md.second = vd.second.second;
-                }
-            }
-        }
+        ctxtPledge.AddIncPledge(mapIncPledge);
         ctxtPledge.hashRef = 0;
     }
     return true;
