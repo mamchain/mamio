@@ -140,6 +140,10 @@ void CPledgeDB::Clear()
 ///////////////////////////////////////////////
 bool CPledgeDB::IsFullPledge(const uint256& hashBlock)
 {
+    if (CBlock::GetBlockHeightByHash(hashBlock) == 0)
+    {
+        return true;
+    }
     return ((CBlock::GetBlockHeightByHash(hashBlock) % BPX_PLEDGE_REWARD_DISTRIBUTE_HEIGHT) == 1);
 }
 
@@ -345,6 +349,7 @@ bool CPledgeDB::GetPowPledgeList(const uint256& hashBlock, const CDestination& d
         CPledgeContext* pCachePledge = GetCachePledgeContext(hashBlock);
         if (pCachePledge == nullptr)
         {
+            StdError("CPledgeDB", "Get pow pledge: Get cache fail, block: %s", hashBlock.GetHex().c_str());
             return false;
         }
         if (IsFullPledge(hashBlock))
@@ -357,15 +362,20 @@ bool CPledgeDB::GetPowPledgeList(const uint256& hashBlock, const CDestination& d
         }
         else
         {
-            CPledgeContext* pCacheRefPledge = GetCachePledgeContext(pCachePledge->hashRef);
-            if (pCacheRefPledge == nullptr)
+            if (pCachePledge->hashRef != 0)
             {
-                return false;
-            }
-            auto it = pCacheRefPledge->mapPledge.find(destPowMint);
-            if (it != pCacheRefPledge->mapPledge.end())
-            {
-                mapPowPledgeList = it->second;
+                CPledgeContext* pCacheRefPledge = GetCachePledgeContext(pCachePledge->hashRef);
+                if (pCacheRefPledge == nullptr)
+                {
+                    StdError("CPledgeDB", "Get pow pledge: Get ref cache fail, ref block: %s, block: %s",
+                             pCachePledge->hashRef.GetHex().c_str(), hashBlock.GetHex().c_str());
+                    return false;
+                }
+                auto it = pCacheRefPledge->mapPledge.find(destPowMint);
+                if (it != pCacheRefPledge->mapPledge.end())
+                {
+                    mapPowPledgeList = it->second;
+                }
             }
             auto nt = pCachePledge->mapPledge.find(destPowMint);
             if (nt != pCachePledge->mapPledge.end())
@@ -387,6 +397,7 @@ bool CPledgeDB::GetPowPledgeList(const uint256& hashBlock, const CDestination& d
         CPledgeContext ctxtPledge;
         if (!GetFullPledge(hashBlock, ctxtPledge))
         {
+            StdError("CPledgeDB", "Get pow pledge: Get full pledge fail, block: %s", hashBlock.GetHex().c_str());
             return false;
         }
         auto it = ctxtPledge.mapPledge.find(destPowMint);
@@ -411,6 +422,7 @@ bool CPledgeDB::GetAddressPledgeData(const uint256& hashBlock, const CDestinatio
         CPledgeContext* pCachePledge = GetCachePledgeContext(hashBlock);
         if (pCachePledge == nullptr)
         {
+            StdError("CPledgeDB", "Get address pledge: Get cache fail, block: %s", hashBlock.GetHex().c_str());
             return false;
         }
         if (IsFullPledge(hashBlock))
@@ -428,19 +440,24 @@ bool CPledgeDB::GetAddressPledgeData(const uint256& hashBlock, const CDestinatio
         }
         else
         {
-            CPledgeContext* pCacheRefPledge = GetCachePledgeContext(pCachePledge->hashRef);
-            if (pCacheRefPledge == nullptr)
+            if (pCachePledge->hashRef != 0)
             {
-                return false;
-            }
-            auto nt = pCacheRefPledge->mapPledge.find(destPowMint);
-            if (nt != pCacheRefPledge->mapPledge.end())
-            {
-                auto mt = nt->second.find(destPledge);
-                if (mt != nt->second.end())
+                CPledgeContext* pCacheRefPledge = GetCachePledgeContext(pCachePledge->hashRef);
+                if (pCacheRefPledge == nullptr)
                 {
-                    nPledgeAmount = mt->second.first;
-                    nPledgeHeight = mt->second.second;
+                    StdError("CPledgeDB", "Get address pledge: Get ref cache fail, ref block: %s, block: %s",
+                             pCachePledge->hashRef.GetHex().c_str(), hashBlock.GetHex().c_str());
+                    return false;
+                }
+                auto nt = pCacheRefPledge->mapPledge.find(destPowMint);
+                if (nt != pCacheRefPledge->mapPledge.end())
+                {
+                    auto mt = nt->second.find(destPledge);
+                    if (mt != nt->second.end())
+                    {
+                        nPledgeAmount = mt->second.first;
+                        nPledgeHeight = mt->second.second;
+                    }
                 }
             }
             auto kt = pCachePledge->mapPledge.find(destPowMint);
@@ -463,6 +480,7 @@ bool CPledgeDB::GetAddressPledgeData(const uint256& hashBlock, const CDestinatio
         CPledgeContext ctxtPledge;
         if (!GetFullPledge(hashBlock, ctxtPledge))
         {
+            StdError("CPledgeDB", "Get address pledge: Get full pledge fail, block: %s", hashBlock.GetHex().c_str());
             return false;
         }
         auto it = ctxtPledge.mapPledge.find(destPowMint);
