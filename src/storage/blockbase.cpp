@@ -1474,8 +1474,6 @@ bool CBlockBase::GetMintPledgeData(const uint256& hashBlock, const CDestination&
     }
     for (const auto& kv : mapPowPledgeList)
     {
-        StdLog("CCH", "Get Mint Pledge Data: amount: %f, pledge address: %s",
-               ValueFromCoin(kv.second.first), CAddress(kv.first).ToString().c_str());
         if (kv.second.first >= nMinPledge)
         {
             int64& pledge = mapValidPledge[kv.first];
