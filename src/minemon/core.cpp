@@ -737,7 +737,8 @@ bool CCoreProtocol::GetBlockPledgeMinMaxValue(const uint256& hashPrevBlock, cons
 
 uint32 CCoreProtocol::CalcSingleBlockDistributePledgeRewardTxCount()
 {
-    static uint32 nDistributeTxCount = 0;
+    return 100;
+    /*static uint32 nDistributeTxCount = 0;
     if (nDistributeTxCount == 0)
     {
         CBlock block;
@@ -767,7 +768,7 @@ uint32 CCoreProtocol::CalcSingleBlockDistributePledgeRewardTxCount()
             nDistributeTxCount -= 100;
         }
     }
-    return nDistributeTxCount;
+    return nDistributeTxCount;*/
 }
 
 Errno CCoreProtocol::VerifyDexOrderTx(const CTransaction& tx, const CDestination& destIn, int64 nValueIn, int nHeight)
