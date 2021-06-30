@@ -219,6 +219,28 @@ def sendfrom(from_addr, to, amount, fork=None, type=0, data=None):
     else:
         raise Exception('sendfrom error: {}'.format(error))
 
+# RPC: sendfrom
+def sendfrom_noalarm(from_addr, to, amount):
+    #unlockkey(from_addr)
+
+    result, error = call({
+        'id': 1,
+        'jsonrpc': '2.0',
+        'method': 'sendfrom',
+        'params': {
+            'from': from_addr,
+            'to': to,
+            'amount': amount
+        }
+    })
+
+    if result:
+        txid = result
+        # print('sendfrom success, txid: {}'.format(txid))
+        return txid
+    else:
+        return "error"
+
 
 # RPC: getforkheight
 def getforkheight(forkid=None):
@@ -406,108 +428,14 @@ def addtemplate_mintredeem(owner, nonce):
     else:
         raise Exception('addnewtemplate mintredeem error: {}'.format(error))
         
-
-########################################3
-def checkbalance():
-    while True:
-        height=getforkheight()
-        print('height: {}'.format(height))
-
-        if height % 5 == 1:
-            b0 = statbalance(rpcurl)
-            print('balance 0: {}'.format(b0))
-            b1 = statbalance(rpcurl_1)
-            print('balance 1: {}'.format(b1))
-            b2 = statbalance(rpcurl_2)
-            print('balance 2: {}'.format(b2))
-
-            stat = b0+b1+b2+61.8
-            print('stat: {}, total: {}'.format(stat, height * 100))
-            break
-
-        time.sleep(1)
-
-def create_table():
-    conn = pymysql.connect('localhost', user = "root", passwd = "qwe123", db = "testdb")
-    cursor = conn.cursor()
-    print(cursor)
-
-    cursor.execute('drop table if exists user')
-    sql="""CREATE TABLE IF NOT EXISTS `user` (
-        `id` int(11) NOT NULL AUTO_INCREMENT,
-        `name` varchar(255) NOT NULL,
-        `age` int(11) NOT NULL,
-        PRIMARY KEY (`id`)
-        ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=0"""
-
-    cursor.execute(sql)
-    cursor.close()
-    conn.close()
-    print('Create table success')
-
-def insert_data():
-    conn=pymysql.connect('localhost','root','qwe123')
-    conn.select_db('testdb')
-
-    cur=conn.cursor()
-
-    cur.execute('drop table if exists user')
-    sql="""CREATE TABLE IF NOT EXISTS `user` (
-        `id` int(11) NOT NULL AUTO_INCREMENT,
-        `name` varchar(255) NOT NULL,
-        `age` int(11) NOT NULL,
-        PRIMARY KEY (`id`)
-        ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=0"""
-
-    cur.execute(sql)
-
-    insert=cur.execute("insert into user values(1,'tom',18)")
-    print('insert lines:',insert)
-
-    sql="insert into user values(%s,%s,%s)"
-    cur.execute(sql,(3,'kongsh',20))
-
-    cur.close()
-    conn.commit()
-    conn.close()
-    print('sql success')
-
-def select_data():
-    conn=pymysql.connect('localhost','root','qwe123')
-    conn.select_db('testdb')
-    cur=conn.cursor()
-
-    cur.execute("select * from user;")
-    while 1:
-        res=cur.fetchone()
-        if res is None:
-            break
-        print (res)
-    cur.close()
-    conn.commit()
-    conn.close()
-    print('sql success')
-
-
-def create_table_userkey():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
-    cursor = conn.cursor()
-    print(cursor)
-
-    #cursor.execute('drop table if exists user')
-    sql = """CREATE TABLE IF NOT EXISTS `userkey` (
-        `address` varchar(128) NOT NULL,
-        `privkey` varchar(128) DEFAULT NULL,
-        `pubkey` varchar(128) DEFAULT NULL,
-        `weight` int(11) DEFAULT '0',
-        PRIMARY KEY (`address`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8;""";
-
-    cursor.execute(sql)
-    cursor.close()
-    conn.close()
-    print('Create table success')
-
+        
+##################################################################
+def import_root_address():
+    amount = getbalance_addr(root_address)
+    if amount == 0:
+        importprivkey(root_privkey)
+    unlockkey(root_pubkey)
+    return amount
 
 def insert_userkey(address, prikey, pubkey, weight):
     conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
@@ -519,176 +447,7 @@ def insert_userkey(address, prikey, pubkey, weight):
     cur.close()
     conn.commit()
     conn.close()
-    print('insert userkey success')
-
-
-def create_userkey_data(count):
-    create_table_userkey()
-
-    for i in range(0, count):
-        pubkey, privkey = makekeypair()
-        address = getpubkeyaddress(pubkey)
-        print('i: {}, {}, {}, {}'.format(i, address, privkey, pubkey))
-        insert_userkey(address, privkey, pubkey, i)
-
-def clear_userkey_data():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
-    cur = conn.cursor()
-
-    sql="delete from userkey;"
-    cur.execute(sql)
-
-    cur.close()
-    conn.commit()
-    conn.close()
-    print('clear userkey success')
-
-def userkey_import():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
-    cur = conn.cursor()
-
-    cur.execute("select address,privkey from userkey;")
-    while 1:
-        res=cur.fetchone()
-        if res is None:
-            break
-        print ('address: {}, privkey: {}'.format(res[0], res[1]))
-        importprivkey(res[1])
-        unlockkey(res[0])
-        #print (res)
-    cur.close()
-    conn.commit()
-    conn.close()
-    print('import userkey success')
-
-def userkey_sendtoken():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
-    cur = conn.cursor()
-
-    from_address = "1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda"
-    unlockkey(from_address)
-
-    cur.execute("select address from userkey;")
-    while 1:
-        res=cur.fetchone()
-        if res is None:
-            break
-        sendfrom(from_address, res[0], 200)
-        print ('sendfrom address: {}'.format(res[0]))
-        #print (res)
-    cur.close()
-    conn.commit()
-    conn.close()
-    print('userkey send token success')
-
-def userkey_create_vote_address():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
-    cur = conn.cursor()
-
-    powmint = "20g0fr64202t8r8tkxw782z7nrq9h1h1frznyctnveksdzxvc2rnn2v52"
-    
-    cur.execute("select address from userkey;")
-    while 1:
-        res=cur.fetchone()
-        if res is None:
-            break
-        owner = res[0]
-        voteaddr = maketemplate_mintpledge(owner, powmint, 1)
-        print ('vote address: {}'.format(voteaddr))
-
-        cur_insert = conn.cursor()
-        sql="insert into vote values(%s,%s,%s,%s,%s)"
-        cur_insert.execute(sql, (voteaddr,owner,powmint,1,0))
-        cur_insert.close()
-        #print (res)
-
-    cur.close()
-    conn.commit()
-    conn.close()
-
-def userkey_vote():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
-    cur = conn.cursor()
-    
-    from_address = "1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda"
-    unlockkey(from_address)
-
-    cur.execute("select owner,powmint,rewardmode from vote;")
-    while 1:
-        res=cur.fetchone()
-        if res is None:
-            break
-        print ('data: {},{},{}'.format(res[0],res[1],res[2]))
-        voteaddr = addtemplate_mintpledge(res[0],res[1],res[2])
-        print ('vote address: {}'.format(voteaddr))
-        sendfrom(from_address, voteaddr, 200)
-
-        #print (res)
-
-    cur.close()
-    conn.commit()
-    conn.close()
-    print('userkey vote success')
-
-def userkey_vote2():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
-    cur = conn.cursor()
-    
-    cur.execute("select owner,powmint,rewardmode from vote;")
-    while 1:
-        res=cur.fetchone()
-        if res is None:
-            break
-        print ('data: {},{},{}'.format(res[0],res[1],res[2]))
-        voteaddr = addtemplate_mintpledge(res[0],res[1],res[2])
-        print ('vote address: {}'.format(voteaddr))
-        amount = getbalance_addr(res[0])
-        unlockkey(res[0])
-        sendfrom(res[0], voteaddr, amount-0.01)
-        print ('send success; {}'.format(res[0]))
-
-        #print (res)
-
-    cur.close()
-    conn.commit()
-    conn.close()
-    print('userkey vote success')
-
-def userkey_redeem():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
-    cur = conn.cursor()
-    
-    from_address = "1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda"
-    unlockkey(from_address)
-
-    cur.execute("select voteaddress,owner from vote;")
-    while 1:
-        res=cur.fetchone()
-        if res is None:
-            break
-        voteaddress = res[0]
-        owner = res[1]
-        redeemaddr = addtemplate_mintredeem(owner,1)
-        amount = getbalance_addr(voteaddress)
-        unlockkey(owner)
-        sendfrom(voteaddress, redeemaddr, amount-0.01)
-        print ('send success: vote: {}, redeem: {}'.format(voteaddress, redeemaddr))
-
-        #print (res)
-
-    cur.close()
-    conn.commit()
-    conn.close()
-    print('userkey redeem success')
-
-
-##################################################################
-def import_root_address():
-    amount = getbalance_addr(root_address)
-    if amount == 0:
-        importprivkey(root_privkey)
-    unlockkey(root_pubkey)
-    return amount
+    #print('insert userkey success')
 
 def rand_select_powaddress(pow_count):
     conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
@@ -736,6 +495,24 @@ def query_powaddress_count():
     conn.commit()
     conn.close()
     return  pow_count
+
+def query_vote_count():
+    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    cur = conn.cursor()
+
+    count = 0
+    
+    cur.execute("select count(*) from vote;")
+    while 1:
+        res = cur.fetchone()
+        if res is None:
+            break
+        count = res[0]
+
+    cur.close()
+    conn.commit()
+    conn.close()
+    return  count
 
 def rand_import_powaddress():
     pow_count = query_powaddress_count()
@@ -838,12 +615,15 @@ def trans_pow_amount():
 
         pow_address = addtemplate_mint(spentaddress, pledgefee)
         amount = getbalance_addr(pow_address)
-        print('trans amount: pow: {}, banalce: {}'.format(pow_address, amount))
-        if amount > 1:
+        #print('trans amount: pow: {}, banalce: {}'.format(pow_address, amount))
+        if amount > 0.01:
             importprivkey(spentprivkey)
             unlockkey(spentaddress)
-            sendfrom(pow_address, root_address, amount-1)
-            print('trans amount: pow: {}, amount: {}'.format(pow_address, amount-1))
+            txid = sendfrom_noalarm(pow_address, root_address, -1)
+            if txid == "error":
+                print('trans pow amount: sendfrom fail, pow: {}, amount: {}'.format(pow_address, amount))
+            else:
+                print('trans pow amount: sendfrom success, pow: {}, amount: {}'.format(pow_address, amount))
 
     cur.close()
     conn.commit()
@@ -961,18 +741,26 @@ def timer_create_user():
     vote_redeem_time = 0
     save_vote_time = 0
     rand_user_time = 0
-    sleep_len =2
+    sleep_len = 2
+    create_user_flag = True
+
     while user_count < 100000:
         time.sleep(sleep_len)
 
+        trans_pow_amount()
+
         create_user_time += sleep_len
-        if create_user_time >= rand_user_time:
+        if create_user_flag and create_user_time >= rand_user_time:
             create_user_time = 0
-            trans_pow_amount()
-            user_rand_vote(1)
-            user_count = user_count + 1
-            rand_user_time = random.randint(1,20)
-            print('create user success, count: {}, wait: {}'.format(user_count, rand_user_time))
+            vote_user_count = query_vote_count()
+            if vote_user_count >= 800:
+                create_user_flag = False
+                print('create user too more, vote count: {}'.format(vote_user_count))
+            else:
+                user_rand_vote(1)
+                user_count = user_count + 1
+                rand_user_time = random.randint(1,20)
+                print('create user success, count: {}, next wait: {}'.format(user_count, rand_user_time))
 
         redeem_time += sleep_len
         if redeem_time >= 15:
@@ -1002,35 +790,8 @@ if __name__ == "__main__":
 
     workmode = sys.argv[1]
 
-    if workmode == "userkey_create":
-        count = 1
-        if len(sys.argv) >= 3:
-            count = int(sys.argv[2])
-        create_userkey_data(count)
-
-    elif workmode == "userkey_clear":
-        clear_userkey_data()
-
-    elif workmode == "userkey_import":
-        userkey_import()
-
-    elif workmode == "userkey_sendtoken":
-        userkey_sendtoken()
-
-    elif workmode == "userkey_createvote":
-        userkey_create_vote_address()
-
-    elif workmode == "userkey_vote":
-        userkey_vote()
-
-    elif workmode == "userkey_vote2":
-        userkey_vote2()
-
-    elif workmode == "userkey_redeem":
-        userkey_redeem()
-
     #######################################
-    elif workmode == "user_rand_vote":
+    if workmode == "user_rand_vote":
         count = 1
         if len(sys.argv) >= 3:
             count = int(sys.argv[2])

@@ -184,7 +184,7 @@ protected:
     bool ClearTx();
     bool InsertKey(const crypto::CKey& key);
     int64 SelectCoins(const CDestination& dest, const uint256& hashFork, int nForkHeight, int64 nTxTime,
-                      int64 nTargetValue, std::size_t nMaxInput, std::vector<CTxOutPoint>& vCoins);
+                      const int64 nAmount, const int64 nTxFee, std::size_t nMaxInput, std::vector<CTxOutPoint>& vCoins);
 
     std::shared_ptr<CWalletTx> LoadWalletTx(const uint256& txid);
     std::shared_ptr<CWalletTx> InsertWalletTx(const uint256& txid, const CAssembledTx& tx, const uint256& hashFork, bool fIsMine, bool fFromMe);
