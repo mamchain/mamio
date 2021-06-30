@@ -1083,7 +1083,7 @@ bool CBlockChain::GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, 
                 }
                 CTransaction txPledgeReward;
                 txPledgeReward.nType = CTransaction::TX_STAKE;
-                txPledgeReward.nTimeStamp = nPrevBlockTime + 1;
+                txPledgeReward.nTimeStamp = 0;
                 if (kv.first.GetTemplateId().GetType() == TEMPLATE_MINTPLEDGE)
                 {
                     CDestination destOwner;
@@ -1138,6 +1138,10 @@ bool CBlockChain::GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, 
     if (nTxListIndex < vRewardList.size())
     {
         vPledgeRewardTxList = vRewardList[nTxListIndex];
+        for (auto& tx : vPledgeRewardTxList)
+        {
+            tx.nTimeStamp = nPrevBlockTime + 1;
+        }
 
         StdDebug("BlockChain", "Get distribute pledge reward tx: distribute pledge reward, prev height: %d, reward list size: %lu, index: %d, reward tx count: %lu, hashPrevBlock: %s",
                  CBlock::GetBlockHeightByHash(hashPrevBlock), vRewardList.size(), nTxListIndex, vPledgeRewardTxList.size(), hashPrevBlock.GetHex().c_str());
