@@ -36,6 +36,10 @@ const char* GetGitVersion();
 
 static int64 AmountFromValue(const double dAmount)
 {
+    if (IsDoubleEqual(dAmount, -1.0))
+    {
+        return -1;
+    }
     if (dAmount <= 0.0 || dAmount > MAX_MONEY)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid amount");

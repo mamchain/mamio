@@ -654,18 +654,19 @@ bool CWallet::SignTransaction(const CDestination& destIn, CTransaction& tx, cons
 bool CWallet::ArrangeInputs(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx)
 {
     tx.vInput.clear();
-    //int nMaxInput = (MAX_TX_SIZE - MAX_SIGNATURE_SIZE - 4) / 33;
-    int64 nTargetValue = tx.nAmount + tx.nTxFee;
-
     vector<CTxOutPoint> vCoins;
     {
         boost::shared_lock<boost::shared_mutex> rlock(rwWalletTx);
-        int64 nValueIn = SelectCoins(destIn, hashFork, nForkHeight, tx.GetTxTime(), nTargetValue, MAX_TX_INPUT_COUNT, vCoins);
-        if (nValueIn < nTargetValue)
+        int64 nValueIn = SelectCoins(destIn, hashFork, nForkHeight, tx.GetTxTime(), tx.nAmount, tx.nTxFee, MAX_TX_INPUT_COUNT, vCoins);
+        if (nValueIn <= 0)
         {
-            StdError("CWallet", "ArrangeInputs: SelectCoins coin not enough, destIn: %s, nValueIn: %ld < nTargeValue: %ld",
-                     CAddress(destIn).ToString().c_str(), nValueIn, nTargetValue);
+            StdError("CWallet", "ArrangeInputs: Select coins: coin not enough, destIn: %s, nAmount: %ld, nTxFee: %ld",
+                     CAddress(destIn).ToString().c_str(), tx.nAmount, tx.nTxFee);
             return false;
+        }
+        if (tx.nAmount < 0)
+        {
+            tx.nAmount = nValueIn - tx.nTxFee;
         }
     }
     tx.vInput.reserve(vCoins.size());
@@ -1380,22 +1381,31 @@ std::shared_ptr<CWalletTx> CWallet::InsertWalletTx(const uint256& txid, const CA
     return spWalletTx;
 }
 
-int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                           int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxOutPoint>& vCoins)
+int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, const int nForkHeight, const int64 nTxTime,
+                           const int64 nAmount, const int64 nTxFee, const size_t nMaxInput, vector<CTxOutPoint>& vCoins)
 {
     vCoins.clear();
 
     auto it = mapWalletUnspent.find(dest);
     if (it == mapWalletUnspent.end())
     {
-        StdLog("CWallet", "SelectCoins: Find dest fail, dest: %s.", CAddress(dest).ToString().c_str());
+        StdLog("CWallet", "Select Coins: Find dest fail, dest: %s.", CAddress(dest).ToString().c_str());
         return 0;
     }
 
     CWalletCoins& walletCoins = it->second.GetCoins(hashFork);
+    int64 nTargetValue = 0;
+    if (nAmount >= 0)
+    {
+        nTargetValue = nAmount + nTxFee;
+    }
+    else
+    {
+        nTargetValue = walletCoins.nTotalValue;
+    }
     if (walletCoins.nTotalValue < nTargetValue)
     {
-        StdLog("CWallet", "SelectCoins: Coins not enough, dest: %s, nTotalValue: %ld, nTargetValue: %ld.",
+        StdLog("CWallet", "Select Coins: Coins not enough, dest: %s, nTotalValue: %ld, nTargetValue: %ld.",
                CAddress(dest).ToString().c_str(), walletCoins.nTotalValue, nTargetValue);
         return 0;
     }
@@ -1410,6 +1420,18 @@ int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, in
     {
         if (out.IsLocked(nForkHeight) || out.GetTxTime() > nTxTime)
         {
+            if (out.IsLocked(nForkHeight))
+            {
+                StdLog("CWallet", "Select Coins: unspent is locked, nForkHeight: %d, dest: %s.", nForkHeight, CAddress(dest).ToString().c_str());
+            }
+            else
+            {
+                StdLog("CWallet", "Select Coins: unspent time out, unspent time: %ld, tx time: %ld, dest: %s.", out.GetTxTime(), nTxTime, CAddress(dest).ToString().c_str());
+            }
+            if (nAmount < 0)
+            {
+                nTargetValue -= out.GetAmount();
+            }
             continue;
         }
 
@@ -1425,6 +1447,11 @@ int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, in
         {
             mapValue.insert(coin);
             nTotalLower += nValue;
+            if (nAmount < 0 && mapValue.size() >= nMaxInput)
+            {
+                nTargetValue = nTotalLower;
+                break;
+            }
             while (mapValue.size() > nMaxInput)
             {
                 multimap<int64, CWalletTxOut>::iterator mi = mapValue.begin();
