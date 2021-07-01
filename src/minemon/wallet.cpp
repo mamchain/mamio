@@ -658,7 +658,7 @@ bool CWallet::ArrangeInputs(const CDestination& destIn, const uint256& hashFork,
     {
         boost::shared_lock<boost::shared_mutex> rlock(rwWalletTx);
         int64 nValueIn = SelectCoins(destIn, hashFork, nForkHeight, tx.GetTxTime(), tx.nAmount, tx.nTxFee, MAX_TX_INPUT_COUNT, vCoins);
-        if (nValueIn == 0)
+        if (nValueIn <= 0)
         {
             StdError("CWallet", "ArrangeInputs: Select coins: coin not enough, destIn: %s, nAmount: %ld, nTxFee: %ld",
                      CAddress(destIn).ToString().c_str(), tx.nAmount, tx.nTxFee);
@@ -1381,8 +1381,8 @@ std::shared_ptr<CWalletTx> CWallet::InsertWalletTx(const uint256& txid, const CA
     return spWalletTx;
 }
 
-int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                           int64 nTxTime, const int64 nAmount, const int64 nTxFee, size_t nMaxInput, vector<CTxOutPoint>& vCoins)
+int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, const int nForkHeight, const int64 nTxTime,
+                           const int64 nAmount, const int64 nTxFee, const size_t nMaxInput, vector<CTxOutPoint>& vCoins)
 {
     vCoins.clear();
 
