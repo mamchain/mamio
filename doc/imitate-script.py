@@ -729,7 +729,7 @@ def trans_redeem_to_vote():
             if amount > 0.01:
                 importprivkey(ownerprivkey)
                 unlockkey(owner)
-                txid = sendfrom_noalarm(redeemaddress, voteaddress, -1)
+                txid = sendfrom_noalarm(redeemaddress, voteaddress, amount-0.01)
                 trans_count += 1
                 if txid == "error":
                     print('trans redeem to vote fail: voteaddress: {}, amount: {}'.format(voteaddress, amount))
