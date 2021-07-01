@@ -14,9 +14,10 @@ import random
 COIN = 1000000
 TX_FEE = 0.01
 
-rpcurl = 'http://127.0.0.1:7702'
+rpcurl = 'http://127.0.0.1:7704'
 
 dbhost = 'localhost'
+dbport = 3306
 dbuser = "root"
 dbpasswd = "qwe123"
 dbname = "testdb"
@@ -239,6 +240,7 @@ def sendfrom_noalarm(from_addr, to, amount):
         # print('sendfrom success, txid: {}'.format(txid))
         return txid
     else:
+        print('sendfrom fail, error: {}'.format(error))
         return "error"
 
 
@@ -438,7 +440,7 @@ def import_root_address():
     return amount
 
 def insert_userkey(address, prikey, pubkey, weight):
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     sql="insert into userkey values(%s,%s,%s,%s)"
@@ -450,7 +452,7 @@ def insert_userkey(address, prikey, pubkey, weight):
     #print('insert userkey success')
 
 def rand_select_powaddress(pow_count):
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     rand_value = random.randint(0,pow_count)
@@ -479,7 +481,7 @@ def rand_select_powaddress(pow_count):
     return  powaddress, spentaddress, pledgefee, spentprivkey
 
 def query_powaddress_count():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     pow_count = 0
@@ -497,7 +499,7 @@ def query_powaddress_count():
     return  pow_count
 
 def query_vote_count():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     count = 0
@@ -528,7 +530,7 @@ def select_rand_powaddress():
     return powaddress
 
 def insert_vote_address(voteaddr, owner, powmint, ownerprivkey, amount):
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     now = int(time.time())
@@ -542,7 +544,7 @@ def insert_vote_address(voteaddr, owner, powmint, ownerprivkey, amount):
     conn.close()
 
 def update_vote_nextredeemtime(voteaddr):
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     now = int(time.time())
@@ -557,7 +559,7 @@ def update_vote_nextredeemtime(voteaddr):
     conn.close()
 
 def update_vote_nextvotetime(voteaddr):
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     now = int(time.time())
@@ -600,7 +602,7 @@ def user_rand_vote(count):
 def trans_pow_amount():
     import_root_address()
 
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     cur.execute("select powaddress,spentaddress,pledgefee,spentprivkey from powmint;")
@@ -631,7 +633,7 @@ def trans_pow_amount():
 
 ##############################################
 def update_vote_amountt(voteaddress, amount):
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     sql="update vote set amount=%s where voteaddress=%s;"
@@ -642,7 +644,7 @@ def update_vote_amountt(voteaddress, amount):
     conn.close()
     
 def save_vote_amount():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     vote_count = 0
@@ -667,7 +669,7 @@ def save_vote_amount():
 
 ##############################################
 def vote_redeem():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     redeem_count = 0
@@ -690,9 +692,12 @@ def vote_redeem():
                 redeemaddress = addtemplate_mintredeem(owner, 1)
                 importprivkey(ownerprivkey)
                 unlockkey(owner)
-                sendfrom(voteaddress, redeemaddress, amount-0.01)
+                txid = sendfrom_noalarm(voteaddress, redeemaddress, -1)
                 redeem_count += 1
-                print('vote redeem: voteaddress: {}, amount: {}'.format(voteaddress, amount))
+                if txid == "error":
+                    print('user redeem fail: voteaddress: {}, amount: {}'.format(voteaddress, amount))
+                else:
+                    print('user redeem success: voteaddress: {}, amount: {}'.format(voteaddress, amount))
 
     cur.close()
     conn.commit()
@@ -701,7 +706,7 @@ def vote_redeem():
 
 ##############################################
 def trans_redeem_to_vote():
-    conn = pymysql.connect(dbhost, user = dbuser, passwd = dbpasswd, db = dbname)
+    conn = pymysql.connect(host = dbhost, port = dbport, user = dbuser, passwd = dbpasswd, db = dbname)
     cur = conn.cursor()
 
     trans_count = 0
@@ -724,9 +729,12 @@ def trans_redeem_to_vote():
             if amount > 0.01:
                 importprivkey(ownerprivkey)
                 unlockkey(owner)
-                sendfrom(redeemaddress, voteaddress, amount-0.01)
+                txid = sendfrom_noalarm(redeemaddress, voteaddress, -1)
                 trans_count += 1
-                print('trans redeem: voteaddress: {}, amount: {}'.format(voteaddress, amount))
+                if txid == "error":
+                    print('trans redeem to vote fail: voteaddress: {}, amount: {}'.format(voteaddress, amount))
+                else:
+                    print('trans redeem to vote success: voteaddress: {}, amount: {}'.format(voteaddress, amount))
 
     cur.close()
     conn.commit()
@@ -785,16 +793,33 @@ def timer_create_user():
 if __name__ == "__main__":
     workmode = "non"
 
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         raise Exception('argv error, count: {}'.format(len(sys.argv)))
 
-    workmode = sys.argv[1]
+    path = os.path.join(os.getcwd(), sys.argv[1])
+
+    input = {}
+    
+    # load json
+    with open(path, 'r') as r:
+        content = json.loads(r.read())
+        input = content["input"]
+
+    rpcurl = 'http://'+input['rpc']['host']+':'+str(input['rpc']['port'])
+    
+    dbhost = input['db']['dbhost']
+    dbport = input['db']['dbport']
+    dbuser = input['db']['dbuser']
+    dbpasswd = input['db']['dbpwd']
+    dbname = input['db']['dbname']
+
+    workmode = sys.argv[2]
 
     #######################################
     if workmode == "user_rand_vote":
         count = 1
-        if len(sys.argv) >= 3:
-            count = int(sys.argv[2])
+        if len(sys.argv) >= 4:
+            count = int(sys.argv[3])
         user_rand_vote(count)
 
     elif workmode == "trans_pow_amount":

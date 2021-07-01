@@ -1,0 +1,15 @@
+{
+    "input": {
+        "db": {
+            "dbhost": "127.0.0.1",
+            "dbport": 3306,
+            "dbuser": "root",
+            "dbpwd": "qwe123",
+            "dbname": "testdb"
+        },
+        "rpc": {
+            "host": "127.0.0.1",
+            "port": 7702
+        }
+    }
+}
