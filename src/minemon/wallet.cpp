@@ -1426,7 +1426,8 @@ int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, co
             }
             else
             {
-                StdLog("CWallet", "Select Coins: unspent time out, unspent time: %ld, tx time: %ld, dest: %s.", out.GetTxTime(), nTxTime, CAddress(dest).ToString().c_str());
+                StdLog("CWallet", "Select Coins: unspent time out, unspent time: %ld, tx time: %ld, unspent: [%d] %s, dest: %s.",
+                       out.GetTxTime(), nTxTime, out.n, out.spWalletTx->txid.GetHex().c_str(), CAddress(dest).ToString().c_str());
             }
             if (nAmount < 0)
             {
