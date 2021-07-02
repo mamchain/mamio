@@ -483,18 +483,21 @@ bool CRedeemDB::GetAddressRedeem(const uint256& hashBlock, const CDestination& d
             {
                 destRedeem = it->second;
             }
-            if (ctxtRedeem.hashRef != 0)
+            else
             {
-                CRedeemContext ctxtRefRedeem;
-                if (!Read(ctxtRedeem.hashRef, ctxtRefRedeem))
+                if (ctxtRedeem.hashRef != 0)
                 {
-                    StdError("CRedeemDB", "Get address redeem: Read fail");
-                    return false;
-                }
-                auto mt = ctxtRefRedeem.mapRedeem.find(dest);
-                if (mt != ctxtRefRedeem.mapRedeem.end())
-                {
-                    destRedeem = mt->second;
+                    CRedeemContext ctxtRefRedeem;
+                    if (!Read(ctxtRedeem.hashRef, ctxtRefRedeem))
+                    {
+                        StdError("CRedeemDB", "Get address redeem: Read fail");
+                        return false;
+                    }
+                    auto mt = ctxtRefRedeem.mapRedeem.find(dest);
+                    if (mt != ctxtRefRedeem.mapRedeem.end())
+                    {
+                        destRedeem = mt->second;
+                    }
                 }
             }
         }
