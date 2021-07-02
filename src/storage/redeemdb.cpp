@@ -150,6 +150,10 @@ void CRedeemDB::Clear()
 ///////////////////////////////////////////////
 bool CRedeemDB::IsFullRedeem(const uint256& hashBlock)
 {
+    if (CBlock::GetBlockHeightByHash(hashBlock) == 0)
+    {
+        return true;
+    }
     return ((CBlock::GetBlockHeightByHash(hashBlock) % BPX_PLEDGE_REWARD_DISTRIBUTE_HEIGHT) == 1);
 }
 

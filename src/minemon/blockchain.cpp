@@ -1004,8 +1004,7 @@ bool CBlockChain::CalcDistributePledgeReward(const uint256& hashBlock, std::map<
 bool CBlockChain::GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, const uint32 nPrevBlockTime, std::vector<CTransaction>& vPledgeRewardTxList)
 {
     const int nDistributeHeight = BPX_PLEDGE_REWARD_DISTRIBUTE_HEIGHT;
-    if (CBlock::GetBlockHeightByHash(hashPrevBlock) < nDistributeHeight
-        || (CBlock::GetBlockHeightByHash(hashPrevBlock) % nDistributeHeight) > 100)
+    if (CBlock::GetBlockHeightByHash(hashPrevBlock) < nDistributeHeight)
     {
         //StdDebug("BlockChain", "Get distribute pledge reward tx: not distribute, hashPrevBlock: %s", hashPrevBlock.GetHex().c_str());
         return true;
@@ -1063,10 +1062,14 @@ bool CBlockChain::GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, 
                 StdError("BlockChain", "Get distribute pledge reward tx: CalcSingleBlockDistributePledgeRewardTxCount fail, hashPrevBlock: %s", hashPrevBlock.GetHex().c_str());
                 return false;
             }
-            uint32 nAddBlockCount = mapPledgeReward.size() / nSingleBlockTxCount;
-            if ((mapPledgeReward.size() % nSingleBlockTxCount) > 0)
+            uint32 nAddBlockCount = 0;
+            if (mapPledgeReward.size() > 0)
             {
-                nAddBlockCount++;
+                nAddBlockCount = mapPledgeReward.size() / nSingleBlockTxCount;
+                if ((mapPledgeReward.size() % nSingleBlockTxCount) > 0)
+                {
+                    nAddBlockCount++;
+                }
             }
             StdDebug("BlockChain", "Get distribute pledge reward tx: Single block tx count: %d, Pledge reward address count: %lu, Add block count: %d",
                      nSingleBlockTxCount, mapPledgeReward.size(), nAddBlockCount);
@@ -1123,10 +1126,9 @@ bool CBlockChain::GetDistributePledgeRewardTxList(const uint256& hashPrevBlock, 
                     return false;
                 }
 
-                StdDebug("BlockChain", "Get distribute pledge reward tx: distribute reward tx: calc height: %d, dist height: %d, reward amount: %ld, dest: %s, tx: %s, hashPrevBlock: %s",
+                StdDebug("BlockChain", "Get distribute pledge reward tx: distribute reward tx: calc height: %d, dist height: %d, reward amount: %ld, dest: %s, hashPrevBlock: %s",
                          CBlock::GetBlockHeightByHash(hashCalcEndBlock), CBlock::GetBlockHeightByHash(hashCalcEndBlock) + 1 + (nAddTxCount / nSingleBlockTxCount),
-                         txPledgeReward.nAmount, CAddress(txPledgeReward.sendTo).ToString().c_str(),
-                         txPledgeReward.GetHash().GetHex().c_str(), hashPrevBlock.GetHex().c_str());
+                         txPledgeReward.nAmount, CAddress(txPledgeReward.sendTo).ToString().c_str(), hashPrevBlock.GetHex().c_str());
 
                 vRewardList[nAddTxCount / nSingleBlockTxCount].push_back(txPledgeReward);
                 nAddTxCount++;
