@@ -1416,7 +1416,7 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
     cacheBlockPledge.Clear();
     cacheBlockPledge.mapPledge = mapBlockPledge[block.hashPrev].mapPledge;
 
-    std::map<CDestination, std::map<CDestination, std::pair<int64, int>>> mapBlockPledge; // pow address, pledge address
+    std::map<CDestination, std::map<CDestination, std::pair<int64, int>>> mapCurBlockPledge; // pow address, pledge address
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
@@ -1444,7 +1444,7 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
                 }
             }
             auto pledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptr);
-            auto& md = mapBlockPledge[pledge->destPowMint][tx.sendTo];
+            auto& md = mapCurBlockPledge[pledge->destPowMint][tx.sendTo];
             auto& cacheMd = cacheBlockPledge.mapPledge[pledge->destPowMint][tx.sendTo];
             md.first += tx.nAmount;
             cacheMd.first += tx.nAmount;
@@ -1497,7 +1497,7 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
                 }
             }
             auto pledge = boost::dynamic_pointer_cast<CTemplateMintPledge>(ptr);
-            auto& md = mapBlockPledge[pledge->destPowMint][txcontxt.destIn];
+            auto& md = mapCurBlockPledge[pledge->destPowMint][txcontxt.destIn];
             md.first -= (tx.nAmount + tx.nTxFee);
 
             int64& nPledgeValue = cacheBlockPledge.mapPledge[pledge->destPowMint][txcontxt.destIn].first;
@@ -1514,7 +1514,7 @@ bool CCheckBlockWalker::UpdatePledge(const uint256& hashBlock, const CBlockEx& b
     cacheBlockPledge.ClearEmpty();
 
     CPledgeContext ctxtPledge;
-    if (!dbPledge.GetBlockPledge(hashBlock, block.hashPrev, mapBlockPledge, ctxtPledge))
+    if (!dbPledge.GetBlockPledge(hashBlock, block.hashPrev, mapCurBlockPledge, ctxtPledge))
     {
         StdLog("Check", "Update pledge: Get block pledge fail, block: %s", hashBlock.GetHex().c_str());
         return false;
@@ -1616,7 +1616,7 @@ bool CCheckBlockWalker::CheckPledgeReward(const uint256& hashBlock, const CBlock
 {
     const int nDistributeHeight = BPX_PLEDGE_REWARD_DISTRIBUTE_HEIGHT;
     int nHeightDiff = CBlock::GetBlockHeightByHash(block.hashPrev) % nDistributeHeight;
-    if (CBlock::GetBlockHeightByHash(block.hashPrev) >= nDistributeHeight && nHeightDiff < 100)
+    if (CBlock::GetBlockHeightByHash(block.hashPrev) >= nDistributeHeight)
     {
         auto it = mapBlockIndex.find(block.hashPrev);
         if (it == mapBlockIndex.end())
