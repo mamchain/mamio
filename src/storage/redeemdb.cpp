@@ -140,6 +140,12 @@ bool CRedeemDB::RetrieveBlockRedeem(const uint256& hashBlock, CRedeemContext& ct
     return GetRedeem(hashBlock, ctxtRedeem);
 }
 
+bool CRedeemDB::RetrieveAddressRedeem(const uint256& hashBlock, const CDestination& dest, CDestRedeem& destRedeem)
+{
+    xengine::CReadLock rlock(rwData);
+    return GetAddressRedeem(hashBlock, dest, destRedeem);
+}
+
 void CRedeemDB::Clear()
 {
     mapCacheFullRedeem.clear();
@@ -295,11 +301,11 @@ bool CRedeemDB::RemoveRedeem(const uint256& hashBlock)
     return Erase(hashBlock);
 }
 
-bool CRedeemDB::GetRedeem(const uint256& hashBlock, CRedeemContext& ctxtRedeem)
+CRedeemContext* CRedeemDB::GetCacheRedeem(const uint256& hashBlock)
 {
     if (hashBlock == 0)
     {
-        return true;
+        return nullptr;
     }
     if (fCache)
     {
@@ -308,35 +314,62 @@ bool CRedeemDB::GetRedeem(const uint256& hashBlock, CRedeemContext& ctxtRedeem)
             auto it = mapCacheFullRedeem.find(hashBlock);
             if (it == mapCacheFullRedeem.end())
             {
+                CRedeemContext ctxtRedeem;
                 if (!Read(hashBlock, ctxtRedeem))
                 {
-                    StdError("CRedeemDB", "Get redeem: Read fail");
-                    return false;
+                    StdError("CRedeemDB", "Get cache redeem: Read fail, block: %s", hashBlock.GetHex().c_str());
+                    return nullptr;
                 }
                 AddCache(hashBlock, ctxtRedeem);
+                it = mapCacheFullRedeem.find(hashBlock);
+                if (it == mapCacheFullRedeem.end())
+                {
+                    StdError("CRedeemDB", "Get cache redeem: Find fail, block: %s", hashBlock.GetHex().c_str());
+                    return nullptr;
+                }
             }
-            else
-            {
-                ctxtRedeem = it->second;
-            }
+            return &(it->second);
         }
         else
         {
             auto it = mapCacheIncRedeem.find(hashBlock);
             if (it == mapCacheIncRedeem.end())
             {
+                CRedeemContext ctxtRedeem;
                 if (!Read(hashBlock, ctxtRedeem))
                 {
-                    StdError("CRedeemDB", "Get redeem: Read fail");
-                    return false;
+                    StdError("CRedeemDB", "Get cache redeem: Read fail, block: %s", hashBlock.GetHex().c_str());
+                    return nullptr;
                 }
                 AddCache(hashBlock, ctxtRedeem);
+                it = mapCacheIncRedeem.find(hashBlock);
+                if (it == mapCacheIncRedeem.end())
+                {
+                    StdError("CRedeemDB", "Get cache redeem: Find fail, block: %s", hashBlock.GetHex().c_str());
+                    return nullptr;
+                }
             }
-            else
-            {
-                ctxtRedeem = it->second;
-            }
+            return &(it->second);
         }
+    }
+    return nullptr;
+}
+
+bool CRedeemDB::GetRedeem(const uint256& hashBlock, CRedeemContext& ctxtRedeem)
+{
+    if (hashBlock == 0)
+    {
+        return true;
+    }
+    if (fCache)
+    {
+        CRedeemContext* pRedeem = GetCacheRedeem(hashBlock);
+        if (pRedeem == nullptr)
+        {
+            StdError("CRedeemDB", "Get redeem: Get cache fail");
+            return false;
+        }
+        ctxtRedeem = *pRedeem;
     }
     else
     {
@@ -358,44 +391,13 @@ bool CRedeemDB::GetRedeem(const uint256& hashBlock, map<CDestination, CDestRedee
     }
     if (fCache)
     {
-        if (IsFullRedeem(hashBlock))
+        CRedeemContext* pRedeem = GetCacheRedeem(hashBlock);
+        if (pRedeem == nullptr)
         {
-            auto it = mapCacheFullRedeem.find(hashBlock);
-            if (it == mapCacheFullRedeem.end())
-            {
-                CRedeemContext ctxtRedeem;
-                if (!Read(hashBlock, ctxtRedeem))
-                {
-                    StdError("CRedeemDB", "Get redeem: Read fail");
-                    return false;
-                }
-                AddCache(hashBlock, ctxtRedeem);
-                mapRedeemOut = ctxtRedeem.mapRedeem;
-            }
-            else
-            {
-                mapRedeemOut = it->second.mapRedeem;
-            }
+            StdError("CRedeemDB", "Get redeem: Get cache fail");
+            return false;
         }
-        else
-        {
-            auto it = mapCacheIncRedeem.find(hashBlock);
-            if (it == mapCacheIncRedeem.end())
-            {
-                CRedeemContext ctxtRedeem;
-                if (!Read(hashBlock, ctxtRedeem))
-                {
-                    StdError("CRedeemDB", "Get redeem: Read fail");
-                    return false;
-                }
-                AddCache(hashBlock, ctxtRedeem);
-                mapRedeemOut = ctxtRedeem.mapRedeem;
-            }
-            else
-            {
-                mapRedeemOut = it->second.mapRedeem;
-            }
-        }
+        mapRedeemOut = pRedeem->mapRedeem;
     }
     else
     {
@@ -406,6 +408,96 @@ bool CRedeemDB::GetRedeem(const uint256& hashBlock, map<CDestination, CDestRedee
             return false;
         }
         mapRedeemOut = ctxtRedeem.mapRedeem;
+    }
+    return true;
+}
+
+bool CRedeemDB::GetAddressRedeem(const uint256& hashBlock, const CDestination& dest, CDestRedeem& destRedeem)
+{
+    if (hashBlock == 0)
+    {
+        return true;
+    }
+    if (fCache)
+    {
+        CRedeemContext* pRedeem = GetCacheRedeem(hashBlock);
+        if (pRedeem == nullptr)
+        {
+            StdError("CRedeemDB", "Get address redeem: Get cache fail");
+            return false;
+        }
+        if (IsFullRedeem(hashBlock))
+        {
+            auto it = pRedeem->mapRedeem.find(dest);
+            if (it != pRedeem->mapRedeem.end())
+            {
+                destRedeem = it->second;
+            }
+        }
+        else
+        {
+            auto it = pRedeem->mapRedeem.find(dest);
+            if (it != pRedeem->mapRedeem.end())
+            {
+                destRedeem = it->second;
+            }
+            else
+            {
+                if (pRedeem->hashRef != 0)
+                {
+                    CRedeemContext* pRefRedeem = GetCacheRedeem(pRedeem->hashRef);
+                    if (pRefRedeem == nullptr)
+                    {
+                        StdError("CRedeemDB", "Get address redeem: Get ref cache fail");
+                        return false;
+                    }
+                    auto mt = pRefRedeem->mapRedeem.find(dest);
+                    if (mt != pRefRedeem->mapRedeem.end())
+                    {
+                        destRedeem = mt->second;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        CRedeemContext ctxtRedeem;
+        if (!Read(hashBlock, ctxtRedeem))
+        {
+            StdError("CRedeemDB", "Get address redeem: Read fail");
+            return false;
+        }
+        if (IsFullRedeem(hashBlock))
+        {
+            auto it = ctxtRedeem.mapRedeem.find(dest);
+            if (it != ctxtRedeem.mapRedeem.end())
+            {
+                destRedeem = it->second;
+            }
+        }
+        else
+        {
+            auto it = ctxtRedeem.mapRedeem.find(dest);
+            if (it != ctxtRedeem.mapRedeem.end())
+            {
+                destRedeem = it->second;
+            }
+            if (ctxtRedeem.hashRef != 0)
+            {
+                CRedeemContext ctxtRefRedeem;
+                if (!Read(ctxtRedeem.hashRef, ctxtRefRedeem))
+                {
+                    StdError("CRedeemDB", "Get address redeem: Read fail");
+                    return false;
+                }
+                auto mt = ctxtRefRedeem.mapRedeem.find(dest);
+                if (mt != ctxtRefRedeem.mapRedeem.end())
+                {
+                    destRedeem = mt->second;
+                }
+            }
+        }
     }
     return true;
 }

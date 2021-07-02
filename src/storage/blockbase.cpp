@@ -1450,9 +1450,9 @@ bool CBlockBase::VerifyRepeatBlock(const uint256& hashFork, uint32 height, const
     return true;
 }
 
-bool CBlockBase::GetBlockRedeemContext(const uint256& hashBlock, CRedeemContext& redeemData)
+bool CBlockBase::RetrieveAddressRedeem(const uint256& hashBlock, const CDestination& dest, CDestRedeem& destRedeem)
 {
-    return dbBlock.RetrieveRedeemData(hashBlock, redeemData);
+    return dbBlock.RetrieveAddressRedeem(hashBlock, dest, destRedeem);
 }
 
 bool CBlockBase::RetrieveAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight)

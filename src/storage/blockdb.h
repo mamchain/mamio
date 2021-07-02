@@ -53,7 +53,7 @@ public:
     bool UpdateTemplateData(const CDestination& dest, const std::vector<uint8>& vTemplateData);
     bool RetrieveTemplateData(const CDestination& dest, std::vector<uint8>& vTemplateData);
     bool UpdateRedeemData(const uint256& hashBlock, const CRedeemContext& redeemData);
-    bool RetrieveRedeemData(const uint256& hashBlock, CRedeemContext& redeemData);
+    bool RetrieveAddressRedeem(const uint256& hashBlock, const CDestination& dest, CDestRedeem& destRedeem);
     bool AddBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn);
 
 protected:

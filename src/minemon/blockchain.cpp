@@ -675,55 +675,43 @@ int64 CBlockChain::GetRedeemLockAmount(const CDestination& destRedeem, int64& nL
         return -1;
     }
 
-    CRedeemContext redeemData;
-    if (!cntrBlock.GetBlockRedeemContext(hashLastBlock, redeemData))
+    CDestRedeem redeem;
+    if (!cntrBlock.RetrieveAddressRedeem(hashLastBlock, destRedeem, redeem))
     {
-        StdLog("BlockChain", "Get redeem lock amount: GetBlockRedeemContext fail, dest: %s", CAddress(destRedeem).ToString().c_str());
+        StdLog("BlockChain", "Get redeem lock amount: Retrieve address redeem fail, dest: %s", CAddress(destRedeem).ToString().c_str());
         return -1;
     }
 
-    auto it = redeemData.mapRedeem.find(destRedeem);
-    if (it == redeemData.mapRedeem.end())
-    {
-        StdLog("BlockChain", "Get redeem lock amount: Find dest fail, dest: %s", CAddress(destRedeem).ToString().c_str());
-        return -1;
-    }
-    CDestRedeem& redeem = it->second;
-
-    int nLockHeightCount = nLastHeight + 1 - redeem.nLockBeginHeight;
-    if (nLockHeightCount <= 0)
-    {
-        StdLog("BlockChain", "Get redeem lock amount: nLockHeightCount error, nLockHeightCount: %d, dest: %s", nLockHeightCount, CAddress(destRedeem).ToString().c_str());
-        return -1;
-    }
-    nLastBlockBalance = redeem.nBalance;
-
-    const int nRedeemDayCount = BPX_REDEEM_DAY_COUNT;
-    const int nRedeemDayHeight = BPX_REDEEM_DAY_HEIGHT;
     int64 nCurLockAmount = 0;
-    if (nLockHeightCount < nRedeemDayCount * nRedeemDayHeight)
+    if (redeem.nLockAmount > 0 && redeem.nLockBeginHeight > 0)
     {
-        nCurLockAmount = redeem.nLockAmount - ((redeem.nLockAmount / nRedeemDayCount) * (nLockHeightCount / nRedeemDayHeight));
+        int nLockHeightCount = nLastHeight + 1 - redeem.nLockBeginHeight;
+        if (nLockHeightCount <= 0)
+        {
+            StdLog("BlockChain", "Get redeem lock amount: nLockHeightCount error, nLockHeightCount: %d, dest: %s", nLockHeightCount, CAddress(destRedeem).ToString().c_str());
+            return -1;
+        }
+        nLastBlockBalance = redeem.nBalance;
+
+        const int nRedeemDayCount = BPX_REDEEM_DAY_COUNT;
+        const int nRedeemDayHeight = BPX_REDEEM_DAY_HEIGHT;
+        if (nLockHeightCount < nRedeemDayCount * nRedeemDayHeight)
+        {
+            nCurLockAmount = redeem.nLockAmount - ((redeem.nLockAmount / nRedeemDayCount) * (nLockHeightCount / nRedeemDayHeight));
+        }
+        StdLog("BlockChain", "Get redeem lock amount: Lock amount: %f, Total lock amount: %f, Single unlock amount: %f, Unlock height: %d, Lock start height: %d",
+               ValueFromCoin(nCurLockAmount), ValueFromCoin(redeem.nLockAmount), ValueFromCoin(redeem.nLockAmount / nRedeemDayCount), nLockHeightCount, redeem.nLockBeginHeight);
     }
-    StdLog("BlockChain", "Get redeem lock amount: Lock amount: %f, Total lock amount: %f, Single unlock amount: %f, Unlock height: %d, Lock start height: %d",
-           ValueFromCoin(nCurLockAmount), ValueFromCoin(redeem.nLockAmount), ValueFromCoin(redeem.nLockAmount / nRedeemDayCount), nLockHeightCount, redeem.nLockBeginHeight);
     return nCurLockAmount;
 }
 
 bool CBlockChain::VerifyBlockMintRedeem(const CBlockEx& block)
 {
-    CRedeemContext redeemData;
-    if (block.hashPrev != 0)
-    {
-        if (!cntrBlock.GetBlockRedeemContext(block.hashPrev, redeemData))
-        {
-            StdLog("BlockChain", "Verify block mint redeem: Get block redeem context fail, prev block: %s", block.hashPrev.GetHex().c_str());
-            return false;
-        }
-    }
-
     const int nRedeemDayCount = BPX_REDEEM_DAY_COUNT;
     const int nRedeemDayHeight = BPX_REDEEM_DAY_HEIGHT;
+
+    set<CDestination> setLocalPledge;
+    map<CDestination, int64> mapRedeemValue;
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction& tx = block.vtx[i];
@@ -731,36 +719,44 @@ bool CBlockChain::VerifyBlockMintRedeem(const CBlockEx& block)
 
         if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
         {
-            CDestRedeem& redeem = redeemData.mapRedeem[tx.sendTo];
-            redeem.nBalance += tx.nAmount;
-            redeem.nLockAmount = redeem.nBalance;
-            redeem.nLockBeginHeight = block.GetBlockHeight();
+            setLocalPledge.insert(tx.sendTo);
         }
         if (txContxt.destIn.IsTemplate() && txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
         {
-            auto it = redeemData.mapRedeem.find(txContxt.destIn);
-            if (it == redeemData.mapRedeem.end())
+            if (setLocalPledge.count(txContxt.destIn))
             {
-                StdLog("BlockChain", "Verify block mint redeem: Find redeem dest fail, block: %s", block.GetHash().GetHex().c_str());
+                StdLog("BlockChain", "Verify block mint redeem: There is pledge in block, block: %s", block.GetHash().GetHex().c_str());
                 return false;
             }
-            CDestRedeem& redeem = it->second;
-            int nLockHeightCount = block.GetBlockHeight() - redeem.nLockBeginHeight;
-            if (nLockHeightCount <= 0)
+            CDestRedeem redeem;
+            if (!cntrBlock.RetrieveAddressRedeem(block.hashPrev, txContxt.destIn, redeem))
             {
-                StdLog("BlockChain", "Verify block mint redeem: nLockHeightCount error, block: %s", block.GetHash().GetHex().c_str());
-                return false;
+                StdLog("BlockChain", "Verify block mint redeem: Retrieve address redeem fail, dest: %s, prev: %s",
+                       CAddress(txContxt.destIn).ToString().c_str(), block.hashPrev.GetHex().c_str());
+                return -1;
             }
-            if (nLockHeightCount < nRedeemDayCount * nRedeemDayHeight)
+            if (redeem.nLockBeginHeight > 0)
             {
-                int64 nCurLocakAmount = redeem.nLockAmount - ((redeem.nLockAmount / nRedeemDayCount) * (nLockHeightCount / nRedeemDayHeight));
-                if (redeem.nBalance - tx.nAmount - tx.nTxFee < nCurLocakAmount)
+                int64& nRedeemValue = mapRedeemValue[txContxt.destIn];
+
+                int nLockHeightCount = block.GetBlockHeight() - redeem.nLockBeginHeight;
+                if (nLockHeightCount <= 0)
                 {
-                    StdLog("BlockChain", "Verify block mint redeem: nBalance error, block: %s", block.GetHash().GetHex().c_str());
+                    StdLog("BlockChain", "Verify block mint redeem: nLockHeightCount error, block: %s", block.GetHash().GetHex().c_str());
                     return false;
                 }
+                if (nLockHeightCount < nRedeemDayCount * nRedeemDayHeight)
+                {
+                    int64 nCurLocakAmount = redeem.nLockAmount - ((redeem.nLockAmount / nRedeemDayCount) * (nLockHeightCount / nRedeemDayHeight));
+                    redeem.nBalance -= nRedeemValue;
+                    if (redeem.nBalance - tx.nAmount - tx.nTxFee < nCurLocakAmount)
+                    {
+                        StdLog("BlockChain", "Verify block mint redeem: nBalance error, block: %s", block.GetHash().GetHex().c_str());
+                        return false;
+                    }
+                }
+                nRedeemValue += (tx.nAmount + tx.nTxFee);
             }
-            redeem.nBalance -= (tx.nAmount + tx.nTxFee);
         }
     }
     return true;
@@ -779,7 +775,7 @@ bool CBlockChain::VerifyTxMintRedeem(const CTransaction& tx, const CDestination&
     int64 nLockAmount = GetRedeemLockAmount(destIn, nLastBlockBalance);
     if (nLockAmount < 0)
     {
-        StdLog("BlockChain", "Verify tx mint redeem: GetRedeemLockAmount fail, tx: %s", tx.GetHash().GetHex().c_str());
+        StdLog("BlockChain", "Verify tx mint redeem: Get redeem lock amount fail, tx: %s", tx.GetHash().GetHex().c_str());
         return false;
     }
     if (nLockAmount > 0)

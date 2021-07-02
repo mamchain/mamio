@@ -31,6 +31,7 @@ public:
     bool AddBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn);
     bool GetBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn, CRedeemContext& ctxtRedeem);
     bool RetrieveBlockRedeem(const uint256& hashBlock, CRedeemContext& ctxtRedeem);
+    bool RetrieveAddressRedeem(const uint256& hashBlock, const CDestination& dest, CDestRedeem& destRedeem);
     void Clear();
 
 protected:
@@ -40,8 +41,10 @@ protected:
 
     bool AddRedeem(const uint256& hashBlock, const CRedeemContext& ctxtRedeem);
     bool RemoveRedeem(const uint256& hashBlock);
+    CRedeemContext* GetCacheRedeem(const uint256& hashBlock);
     bool GetRedeem(const uint256& hashBlock, CRedeemContext& ctxtRedeem);
     bool GetRedeem(const uint256& hashBlock, std::map<CDestination, CDestRedeem>& mapRedeemOut);
+    bool GetAddressRedeem(const uint256& hashBlock, const CDestination& dest, CDestRedeem& destRedeem);
 
     void AddCache(const uint256& hashBlock, const CRedeemContext& ctxtRedeem);
 
