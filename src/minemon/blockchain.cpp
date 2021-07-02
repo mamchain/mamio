@@ -710,7 +710,7 @@ bool CBlockChain::VerifyBlockMintRedeem(const CBlockEx& block)
     const int nRedeemDayCount = BPX_REDEEM_DAY_COUNT;
     const int nRedeemDayHeight = BPX_REDEEM_DAY_HEIGHT;
 
-    set<CDestination> setLocalPledge;
+    set<CDestination> setBlockRedeem;
     map<CDestination, int64> mapRedeemValue;
     for (size_t i = 0; i < block.vtx.size(); i++)
     {
@@ -719,13 +719,13 @@ bool CBlockChain::VerifyBlockMintRedeem(const CBlockEx& block)
 
         if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
         {
-            setLocalPledge.insert(tx.sendTo);
+            setBlockRedeem.insert(tx.sendTo);
         }
         if (txContxt.destIn.IsTemplate() && txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_MINTREDEEM)
         {
-            if (setLocalPledge.count(txContxt.destIn))
+            if (setBlockRedeem.count(txContxt.destIn))
             {
-                StdLog("BlockChain", "Verify block mint redeem: There is pledge in block, block: %s", block.GetHash().GetHex().c_str());
+                StdLog("BlockChain", "Verify block mint redeem: There is redeem in block, block: %s", block.GetHash().GetHex().c_str());
                 return false;
             }
             CDestRedeem redeem;

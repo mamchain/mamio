@@ -592,7 +592,7 @@ def user_rand_vote(count):
     import_root_address()
     for i in range(0, count):
         amount = getbalance_addr(root_address)
-        vote_amount = random.randint(100,200)
+        vote_amount = random.randint(100,300)
         if amount >= vote_amount+0.01:
             powaddress = select_rand_powaddress()
             user_address, privkey = user_create()
@@ -767,7 +767,7 @@ def timer_create_user():
             else:
                 user_rand_vote(1)
                 user_count = user_count + 1
-                rand_user_time = random.randint(1, 10)
+                rand_user_time = random.randint(1,20)
                 print('create user success, count: {}, next wait: {}'.format(user_count, rand_user_time))
 
         redeem_time += sleep_len
