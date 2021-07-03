@@ -365,13 +365,21 @@ bool CService::GetTransaction(const uint256& txid, CTransaction& tx, uint256& ha
                        txid.GetHex().c_str(), hash.GetHex().c_str());
                 return false;
             }
-            for (int i = 0; i < block.vtx.size(); i++)
+            if (txid == block.txMint.GetHash())
             {
-                if (txid == block.vtx[i].GetHash())
+                hashBlock = hash;
+                destIn.SetNull();
+            }
+            else
+            {
+                for (int i = 0; i < block.vtx.size(); i++)
                 {
-                    hashBlock = hash;
-                    destIn = block.vTxContxt[i].destIn;
-                    break;
+                    if (txid == block.vtx[i].GetHash())
+                    {
+                        hashBlock = hash;
+                        destIn = block.vTxContxt[i].destIn;
+                        break;
+                    }
                 }
             }
             if (hashBlock != 0)

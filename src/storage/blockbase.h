@@ -281,7 +281,7 @@ public:
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent);
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent);
     bool VerifyRepeatBlock(const uint256& hashFork, uint32 height, const CDestination& destMint);
-    bool GetBlockRedeemContext(const uint256& hashBlock, CRedeemContext& redeemData);
+    bool RetrieveAddressRedeem(const uint256& hashBlock, const CDestination& dest, CDestRedeem& destRedeem);
     bool RetrieveAddressPledgeData(const uint256& hashBlock, const CDestination& destPowMint, const CDestination& destPledge, int64& nPledgeAmount, int& nPledgeHeight);
     bool GetMintPledgeData(const uint256& hashBlock, const CDestination& destMintPow, const int64 nMinPledge, const int64 nMaxPledge,
                            std::map<CDestination, int64>& mapValidPledge, int64& nTotalPledge);

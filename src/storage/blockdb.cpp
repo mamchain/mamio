@@ -250,9 +250,9 @@ bool CBlockDB::UpdateRedeemData(const uint256& hashBlock, const CRedeemContext& 
     return dbRedeem.AddNew(hashBlock, redeemData);
 }
 
-bool CBlockDB::RetrieveRedeemData(const uint256& hashBlock, CRedeemContext& redeemData)
+bool CBlockDB::RetrieveAddressRedeem(const uint256& hashBlock, const CDestination& dest, CDestRedeem& destRedeem)
 {
-    return dbRedeem.Retrieve(hashBlock, redeemData);
+    return dbRedeem.RetrieveAddressRedeem(hashBlock, dest, destRedeem);
 }
 
 bool CBlockDB::AddBlockRedeem(const uint256& hashBlock, const uint256& hashPrev, const std::vector<std::pair<CDestination, int64>>& vTxRedeemIn)
