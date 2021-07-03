@@ -72,20 +72,20 @@ const uint256& CCoreProtocol::GetGenesisBlockHash()
 }
 
 /*
-Address : 12dqbjzz6mann5581zqtn3w2vmqgmv8fv5mz185mx5yzpq47j662wcka3
-PubKey : 8531f2906bbf2f9d16143e2dfba14de1a55bf051f5fd019552aba2e67fb96e13
-Secret : 62c921d895140d83bd709caef55976cb774535f045c2c4deaafed4f0a58b5698
+Address : 1j93e80e75k22jwbt8w1ehw96cz7mgkhg3qzc1z40mgpcwr7asv1r8020
+PubKey : c3ceea60ce2ca480fcc0fe1d304e48cf6726f1e802477a7129c42cc701e44692
+Secret : 21a995ff483bdb81f3b443ce6c378b3ad986d1efda9cacf89b30c573ce59e381
 */
 
 void CCoreProtocol::GetGenesisBlock(CBlock& block)
 {
-    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("8531f2906bbf2f9d16143e2dfba14de1a55bf051f5fd019552aba2e67fb96e13")));
+    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("c3ceea60ce2ca480fcc0fe1d304e48cf6726f1e802477a7129c42cc701e44692")));
 
     block.SetNull();
 
     block.nVersion = CBlock::BLOCK_VERSION;
     block.nType = CBlock::BLOCK_GENESIS;
-    block.nTimeStamp = 1624604400;
+    block.nTimeStamp = 1625303402;
     block.hashPrev = 0;
 
     CTransaction& tx = block.txMint;
@@ -94,7 +94,7 @@ void CCoreProtocol::GetGenesisBlock(CBlock& block)
     tx.sendTo = destOwner;
     tx.nAmount = BPX_INIT_REWARD_TOKEN;
 
-    string strData("Lord chief justice calls for slimmed down bitcoin, no, it's juries. Under the guidance of the golden ratio, we mine the founding block at UTC+0 14:49:58.");
+    string strData("Today of 6 years ago, R decided to change something else. At the same time something important for R was born. Under the guidance of the golden ratio, we mine the founding block at UTC+0 09:10:02.");
     tx.vchData.assign(strData.begin(), strData.end());
 
     CProfile profile;
@@ -1042,22 +1042,23 @@ CTestNetCoreProtocol::CTestNetCoreProtocol()
 }
 
 /*
-Address: 1ge5wyx5x93yxcawhhq67wywa4ngrd8gghtaqwn22njhha4vztfmr8cpn
-PubKey : e9d37f1315a3ac42547e958e10a28661258a7b7ecc8d912bd6fd48bd74cf8b83
-Secret : 338f01358e2d0fa66a496c16f1838f9464a85a04d800923a757e722a0daf093e
+Address: 1gkk59dd3e6rkkw5cd3q34hrg39g22mynm91546g2gv6krqhkbkcd8azr
+PubKey : d85c335e3ccd86021a5242a2d55321601a104732ee68acf039b171a3b554e684
+Secret : 846814f373b7a2f4acd9a8367fb79922150765f2ebf445115f0a413fcde7f6b8
 */
+
 void CTestNetCoreProtocol::GetGenesisBlock(CBlock& block)
 {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 
-    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("e9d37f1315a3ac42547e958e10a28661258a7b7ecc8d912bd6fd48bd74cf8b83")));
+    const CDestination destOwner = CDestination(minemon::crypto::CPubKey(uint256("d85c335e3ccd86021a5242a2d55321601a104732ee68acf039b171a3b554e684")));
 
     block.SetNull();
 
     block.nVersion = CBlock::BLOCK_VERSION;
     block.nType = CBlock::BLOCK_GENESIS;
-    block.nTimeStamp = 1624604400;
+    block.nTimeStamp = 1625303402;
     block.hashPrev = 0;
 
     CTransaction& tx = block.txMint;
