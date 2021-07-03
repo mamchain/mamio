@@ -94,7 +94,7 @@ void CCoreProtocol::GetGenesisBlock(CBlock& block)
     tx.sendTo = destOwner;
     tx.nAmount = BPX_INIT_REWARD_TOKEN;
 
-    string strData("Lord chief justice calls for slimmed down bitcoin, no, it's juries. Under the guidance of the golden ratio, we mine the founding block at UTC+0 14:49:58.");
+    string strData("Today of 6 years ago, R decided to change something else. At the same time something important for R was born. Under the guidance of the golden ratio, we mine the founding block at UTC+0 09:10:02.");
     tx.vchData.assign(strData.begin(), strData.end());
 
     CProfile profile;
